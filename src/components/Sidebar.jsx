@@ -8,7 +8,7 @@ export default function Sidebar({ activeTab, setActiveTab }) {
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">SplitCash</div>
+      <div className="sidebar-logo">FinTrack</div>
       <nav className="sidebar-nav">
         {items.map(item => (
           <button

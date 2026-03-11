@@ -17,20 +17,28 @@ export default function Investments() {
   async function load() {
     const data = await getInvestments()
     setInv(data)
-    setBankInput(String(data.bank_balance))
-    setHysaInput(String(data.hysa_balance))
-    setStockInput(String(data.stock_value))
   }
 
   useEffect(() => { load() }, [])
 
-  async function handleUpdateBalances(e) {
+  async function handleUpdateBank(e) {
     e.preventDefault()
-    await updateInvestments({
-      bank_balance: parseFloat(bankInput) || 0,
-      hysa_balance: parseFloat(hysaInput) || 0,
-      stock_value: parseFloat(stockInput) || 0,
-    })
+    await updateInvestments({ bank_balance: parseFloat(bankInput) || 0, hysa_balance: inv.hysa_balance, stock_value: inv.stock_value })
+    setBankInput('')
+    load()
+  }
+
+  async function handleUpdateHysa(e) {
+    e.preventDefault()
+    await updateInvestments({ bank_balance: inv.bank_balance, hysa_balance: parseFloat(hysaInput) || 0, stock_value: inv.stock_value })
+    setHysaInput('')
+    load()
+  }
+
+  async function handleUpdateStock(e) {
+    e.preventDefault()
+    await updateInvestments({ bank_balance: inv.bank_balance, hysa_balance: inv.hysa_balance, stock_value: parseFloat(stockInput) || 0 })
+    setStockInput('')
     load()
   }
 
@@ -80,10 +88,10 @@ export default function Investments() {
           <div className="card-header"><h2>Bank</h2></div>
           <div className="card-body">
             <p className="inv-desc">Checking / savings account balance.</p>
-            <form onSubmit={handleUpdateBalances}>
+            <form onSubmit={handleUpdateBank}>
               <div className="input-group">
                 <label>Balance ($)</label>
-                <input type="number" step="0.01" value={bankInput} onChange={e => setBankInput(e.target.value)} />
+                <input type="number" step="0.01" placeholder={fmt(inv.bank_balance)} value={bankInput} onChange={e => setBankInput(e.target.value)} />
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save</button>
             </form>
@@ -95,10 +103,10 @@ export default function Investments() {
           <div className="card-header"><h2>HYSA</h2></div>
           <div className="card-body">
             <p className="inv-desc">High-yield savings account balance.</p>
-            <form onSubmit={handleUpdateBalances}>
+            <form onSubmit={handleUpdateHysa}>
               <div className="input-group">
                 <label>Balance ($)</label>
-                <input type="number" step="0.01" value={hysaInput} onChange={e => setHysaInput(e.target.value)} />
+                <input type="number" step="0.01" placeholder={fmt(inv.hysa_balance)} value={hysaInput} onChange={e => setHysaInput(e.target.value)} />
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save</button>
             </form>
@@ -110,10 +118,10 @@ export default function Investments() {
           <div className="card-header"><h2>Stocks</h2></div>
           <div className="card-body">
             <p className="inv-desc">Total value of individual stock holdings.</p>
-            <form onSubmit={handleUpdateBalances}>
+            <form onSubmit={handleUpdateStock}>
               <div className="input-group">
                 <label>Value ($)</label>
-                <input type="number" step="0.01" value={stockInput} onChange={e => setStockInput(e.target.value)} />
+                <input type="number" step="0.01" placeholder={fmt(inv.stock_value)} value={stockInput} onChange={e => setStockInput(e.target.value)} />
               </div>
               <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save</button>
             </form>

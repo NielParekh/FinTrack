@@ -1,5 +1,5 @@
 {
-  "name": "splitcash",
+  "name": "fintrack",
   "version": "1.0.0",
   "main": "electron/main.js",
   "scripts": {
@@ -22,8 +22,8 @@
     "wait-on": "^7"
   },
   "build": {
-    "appId": "com.splitcash.app",
-    "productName": "SplitCash",
+    "appId": "com.fintrack.app",
+    "productName": "FinTrack",
     "mac": { "target": "dmg" },
     "files": ["dist/**", "electron/**"],
     "extraResources": [{ "from": "data", "to": "data" }]
