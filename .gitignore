@@ -1,16 +1,8 @@
 # dependencies
 /node_modules
-/.pnp
-.pnp.js
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
+# build output
+/dist
 /build
 
 # misc
@@ -27,21 +19,7 @@ yarn-error.log*
 # local env files
 .env*.local
 
-# database
-*.db
-*.db-journal
+# data (user data, not committed)
 data/transactions.json
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-.pytest_cache/
-.coverage
-htmlcov/
-*.egg
+data/investments.json
+data/investment_history.json

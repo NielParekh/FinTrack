@@ -1,102 +1,50 @@
-# 💸 SplitCash - Expense & Income Tracker
+# FinTrack
 
-A modern, dark-mode expense and income tracking application built with Flask and vanilla JavaScript.
+A personal finance desktop app for tracking expenses and investments. Built with Electron and React.
 
 ## Features
 
-- 📝 **Transaction Management**: Add, edit, and delete income and expenses
-- 📊 **Financial Summary**: View total income, expenses, and balance
-- 📈 **Visual Analytics**: Four interactive charts for financial insights
-  - Income vs Expenses Over Time
-  - Expenses by Category (Pie Chart)
-  - Monthly Balance Trend
-  - Category Spending Over Time
-- 🎨 **Dark Mode**: Beautiful dark theme throughout
-- 💾 **Persistent Storage**: JSON-based data storage
+- **Expense Tracking** — Add, edit, and delete expenses across categories (Food, Rent, Travel, Misc)
+- **Investment Portfolio** — Track bank balance, HYSA, individual stocks, and ETFs
+- **Portfolio Stats** — Charts showing net worth and portfolio breakdown over time
+- **Spending Stats** — Visual breakdowns of expenses by category and over time
+- **Local Storage** — All data stored in JSON files on your machine. No accounts, no cloud.
 
-## Quick Start
+## Tech Stack
 
-### Local Development
+- [Electron](https://www.electronjs.org/) — desktop shell and file I/O
+- [React 18](https://react.dev/) + [Vite](https://vitejs.dev/) — UI
+- [Chart.js](https://www.chartjs.org/) — charts
 
-1. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
+## Getting Started
 
-2. **Run the application:**
-   ```bash
-   python app.py
-   ```
-
-3. **Open in browser:**
-   ```
-   http://localhost:5000
-   ```
-
-### Docker
-
-**Using Docker Compose (Recommended):**
 ```bash
-docker-compose up -d
+npm install
+npm run dev
 ```
 
-**Using Docker directly:**
-```bash
-docker build -t splitcash:latest .
-docker run -d -p 8000:8000 \
-  -v $(pwd)/data:/app/data \
-  -v $(pwd)/logs:/app/logs \
-  splitcash:latest
-```
+## Build
 
-Access at `http://localhost:8000`
+```bash
+npm run dist   # produces a .dmg for macOS
+```
 
 ## Project Structure
 
 ```
-SplitCash/
-├── app.py              # Flask backend
-├── app.js              # Frontend JavaScript
-├── index.html          # Main HTML template
-├── styles.css          # Dark mode styling
-├── requirements.txt    # Python dependencies
-├── Dockerfile          # Docker configuration
-├── docker-compose.yml  # Docker Compose setup
-├── data/               # Transaction data (JSON)
-└── logs/               # Application logs
+FinTrack/
+├── electron/
+│   ├── main.js        # Main process — IPC handlers, file I/O
+│   └── preload.js     # Context bridge
+├── src/
+│   ├── App.jsx        # Root component and tab routing
+│   ├── main.jsx       # React entry point
+│   ├── index.css      # Global styles
+│   ├── components/    # Sidebar, Topbar, ExpenseModal
+│   ├── pages/         # Expenses, Investments, Stats, PortfolioStats
+│   └── lib/           # api.js (IPC calls), constants.js
+├── data/              # Local JSON data (gitignored)
+├── index.html
+├── vite.config.js
+└── package.json
 ```
-
-## API Endpoints
-
-- `GET /api/transactions` - Get all transactions
-- `POST /api/transactions` - Create new transaction
-- `PATCH /api/transactions/<id>` - Update transaction
-- `DELETE /api/transactions/<id>` - Delete transaction
-- `GET /api/summary` - Get financial summary
-
-## Deployment
-
-### AWS EC2 Deployment (Direct)
-See [EC2_DEPLOYMENT.md](EC2_DEPLOYMENT.md) for step-by-step EC2 deployment guide with automated setup scripts.
-
-### AWS Elastic Beanstalk
-See [DEPLOYMENT.md](DEPLOYMENT.md) for AWS Elastic Beanstalk deployment instructions.
-
-### Docker Deployment
-See [DOCKER.md](DOCKER.md) for Docker deployment options including:
-- AWS ECS/Fargate
-- Google Cloud Run
-- Azure Container Instances
-- DigitalOcean App Platform
-- Heroku
-
-## Technologies Used
-
-- **Backend**: Flask (Python)
-- **Frontend**: Vanilla JavaScript, HTML5, CSS3
-- **Charts**: Chart.js
-- **Production Server**: Gunicorn
-
-## License
-
-MIT
