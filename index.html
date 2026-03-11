@@ -3,115 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SplitCash - Expense & Income Tracker</title>
+    <title>SplitCash</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <a href="/" class="logo">
-                <span class="logo-icon">🦁</span>
-                <span>SplitCash</span>
-            </a>
-            <button class="btn btn-orange" onclick="openAddModal()">+ Add expense</button>
-        </div>
-    </header>
+    <div class="shell">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-logo">SplitCash</div>
+            <nav class="sidebar-nav">
+                <button class="nav-item active" id="nav-investments" onclick="switchTab('investments')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                    Investments
+                </button>
+                <button class="nav-item" id="nav-portfolio-stats" onclick="switchTab('portfolio-stats')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+                    Portfolio Stats
+                </button>
+                <button class="nav-item" id="nav-transactions" onclick="switchTab('transactions')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                    Transactions
+                </button>
+                <button class="nav-item" id="nav-stats" onclick="switchTab('stats')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                    Stats
+                </button>
+            </nav>
+        </aside>
 
-    <div class="container">
-        <!-- Summary Section -->
-        <div class="summary-section">
-            <div class="summary-header">Your Balance</div>
-            <div class="summary-grid">
-                <div class="summary-item">
-                    <div class="summary-label">Total Income</div>
-                    <div class="summary-value summary-income" id="totalIncome">$0.00</div>
+        <!-- Main area -->
+        <div class="main">
+            <header class="topbar">
+                <div class="topbar-breadcrumb">
+                    <span class="topbar-app">SplitCash</span>
+                    <span class="topbar-sep">/</span>
+                    <span class="topbar-page" id="topbarPage">Transactions</span>
                 </div>
-                <div class="summary-item">
-                    <div class="summary-label">Total Expenses</div>
-                    <div class="summary-value summary-expense" id="totalExpenses">$0.00</div>
-                </div>
-                <div class="summary-item">
-                    <div class="summary-label">Balance</div>
-                    <div class="summary-value summary-balance" id="balance">$0.00</div>
-                </div>
-            </div>
-        </div>
+                <button class="btn btn-primary" id="addTransactionBtn" onclick="openAddModal()">+ Add transaction</button>
+            </header>
 
-        <!-- Tabs -->
-        <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('transactions')">📝 Transactions</button>
-            <button class="tab-btn" onclick="switchTab('stats')">📊 Stats</button>
-        </div>
-
-        <!-- Transactions Tab -->
-        <div id="transactionsTab" class="tab-content active">
-            <div class="card">
-                <div class="card-header">
-                    <h2>Recent Activity</h2>
-                </div>
-
-                <div id="loading" class="loading" style="display: none;">
-                    Loading transactions...
-                </div>
-
-                <div id="emptyState" class="empty-state" style="display: none;">
-                    <div class="empty-state-icon">📝</div>
-                    <h3>No transactions yet</h3>
-                    <p>Add your first expense or income to get started tracking!</p>
-                </div>
-
-                <div id="transactionsList" class="transaction-list"></div>
-            </div>
-        </div>
-
-        <!-- Stats Tab -->
-        <div id="statsTab" class="tab-content">
-            <div class="stats-container">
-                <!-- Chart 1: Income vs Expenses Over Time -->
-                <div class="card chart-card">
-                    <div class="card-header">
-                        <h2>Income vs Expenses Over Time</h2>
+            <main class="content">
+                <!-- Summary stats -->
+                <div class="summary-grid" id="transactionSummary">
+                    <div class="stat-card">
+                        <div class="stat-label">Total Income</div>
+                        <div class="stat-value income" id="totalIncome">$0.00</div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="incomeExpensesChart"></canvas>
+                    <div class="stat-card">
+                        <div class="stat-label">Total Expenses</div>
+                        <div class="stat-value expense" id="totalExpenses">$0.00</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Balance</div>
+                        <div class="stat-value" id="balance">$0.00</div>
                     </div>
                 </div>
 
-                <!-- Chart 2: Expenses by Category -->
-                <div class="card chart-card">
-                    <div class="card-header">
-                        <h2>Expenses by Category</h2>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="categoryChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Chart 3: Monthly Balance Trend -->
-                <div class="card chart-card">
-                    <div class="card-header">
-                        <h2>Monthly Balance Trend</h2>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="balanceChart"></canvas>
+                <!-- Transactions Tab -->
+                <div id="transactionsTab" class="tab-content active">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2>Recent Activity</h2>
+                        </div>
+                        <div id="loading" class="loading" style="display: none;">Loading transactions...</div>
+                        <div id="emptyState" class="empty-state" style="display: none;">
+                            <div class="empty-state-icon">📝</div>
+                            <h3>No transactions yet</h3>
+                            <p>Add your first expense or income to get started tracking!</p>
+                        </div>
+                        <div id="transactionsList" class="transaction-list"></div>
                     </div>
                 </div>
 
-                <!-- Chart 4: Category Spending Over Time -->
-                <div class="card chart-card">
-                    <div class="card-header">
-                        <h2>Category Spending Over Time</h2>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="categoryTrendChart"></canvas>
+                <!-- Stats Tab -->
+                <div id="statsTab" class="tab-content">
+                    <div class="stats-container">
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>Income vs Expenses Over Time</h2></div>
+                            <div class="chart-container"><canvas id="incomeExpensesChart"></canvas></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>Expenses by Category</h2></div>
+                            <div class="chart-container"><canvas id="categoryChart"></canvas></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>Monthly Balance Trend</h2></div>
+                            <div class="chart-container"><canvas id="balanceChart"></canvas></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>Category Spending Over Time</h2></div>
+                            <div class="chart-container"><canvas id="categoryTrendChart"></canvas></div>
+                        </div>
                     </div>
                 </div>
-            </div>
+                <!-- Portfolio Stats Tab -->
+                <div id="portfolioStatsTab" class="tab-content">
+                    <div id="portfolioStatsEmpty" class="empty-state" style="display: none;">
+                        <div class="empty-state-icon">📈</div>
+                        <h3>No history yet</h3>
+                        <p>Update your investment values to start tracking over time.</p>
+                    </div>
+                    <div id="portfolioStatsCharts" class="stats-container">
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>Net Worth Over Time</h2></div>
+                            <div class="chart-container"><canvas id="netWorthChart"></canvas></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>Bank Account Over Time</h2></div>
+                            <div class="chart-container"><canvas id="bankHistoryChart"></canvas></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>HYSA Over Time</h2></div>
+                            <div class="chart-container"><canvas id="hysaHistoryChart"></canvas></div>
+                        </div>
+                        <div class="card chart-card">
+                            <div class="card-header"><h2>Stock Portfolio Over Time</h2></div>
+                            <div class="chart-container"><canvas id="stockHistoryChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Investments Tab -->
+                <div id="investmentsTab" class="tab-content">
+                    <div class="summary-grid inv-summary-grid" style="margin-bottom: 24px;">
+                        <div class="stat-card">
+                            <div class="stat-label">Bank Balance</div>
+                            <div class="stat-value income" id="inv-bankBalance">$0.00</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">HYSA</div>
+                            <div class="stat-value income" id="inv-hysaBalance">$0.00</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Stock Portfolio</div>
+                            <div class="stat-value" id="inv-stockValue">$0.00</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Net Worth</div>
+                            <div class="stat-value" id="inv-netWorth">$0.00</div>
+                        </div>
+                    </div>
+
+                    <div class="inv-grid">
+                        <div class="card">
+                            <div class="card-header"><h2>Bank Account</h2></div>
+                            <div class="card-body">
+                                <p class="inv-desc">Enter the current total balance across all your bank accounts.</p>
+                                <div class="input-group">
+                                    <label>Balance</label>
+                                    <input type="number" id="bankBalanceInput" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                <button class="btn btn-primary" onclick="saveInvestment('bank')">Update Balance</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h2>HYSA</h2></div>
+                            <div class="card-body">
+                                <p class="inv-desc">Enter the current balance in your High Yield Savings Account.</p>
+                                <div class="input-group">
+                                    <label>Balance</label>
+                                    <input type="number" id="hysaBalanceInput" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                <button class="btn btn-primary" onclick="saveInvestment('hysa')">Update HYSA</button>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header"><h2>Stock Portfolio</h2></div>
+                            <div class="card-body">
+                                <p class="inv-desc">Enter the current total market value of your stock portfolio.</p>
+                                <div class="input-group">
+                                    <label>Portfolio Value</label>
+                                    <input type="number" id="stockValueInput" step="0.01" min="0" placeholder="0.00">
+                                </div>
+                                <button class="btn btn-primary" onclick="saveInvestment('stock')">Update Portfolio</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
     </div>
 
@@ -124,14 +197,9 @@
             </div>
             <div class="modal-body">
                 <form id="transactionForm" onsubmit="handleSubmit(event)">
-                    <!-- Type Toggle -->
                     <div class="type-toggle">
-                        <button type="button" class="type-btn expense active" id="typeExpense" onclick="setType('expense')">
-                            💸 Expense
-                        </button>
-                        <button type="button" class="type-btn income" id="typeIncome" onclick="setType('income')">
-                            💰 Income
-                        </button>
+                        <button type="button" class="type-btn active" id="typeExpense" onclick="setType('expense')">Expense</button>
+                        <button type="button" class="type-btn" id="typeIncome" onclick="setType('income')">Income</button>
                     </div>
                     <input type="hidden" id="type" value="expense">
 
@@ -149,10 +217,10 @@
                     <div class="input-group" id="categoryGroup">
                         <label>Category</label>
                         <select id="category">
-                            <option value="Food">🍔 Food</option>
-                            <option value="Rent">🏠 Rent</option>
-                            <option value="Travel">✈️ Travel</option>
-                            <option value="Misc">📦 Misc</option>
+                            <option value="Food">Food</option>
+                            <option value="Rent">Rent</option>
+                            <option value="Travel">Travel</option>
+                            <option value="Misc">Misc</option>
                         </select>
                     </div>
 

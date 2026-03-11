@@ -20,6 +20,21 @@ class SummaryType(graphene.ObjectType):
     balance = Float(required=True)
 
 
+class InvestmentType(graphene.ObjectType):
+    bank_balance = Float(required=True)
+    hysa_balance = Float(required=True)
+    stock_value = Float(required=True)
+    last_updated = String()
+
+
+class InvestmentHistoryType(graphene.ObjectType):
+    date = String(required=True)
+    bank_balance = Float(required=True)
+    hysa_balance = Float(required=True)
+    stock_value = Float(required=True)
+    net_worth = Float(required=True)
+
+
 class TransactionFilters(graphene.InputObjectType):
     """Input filters for transactions"""
     type = String()
@@ -38,6 +53,9 @@ class TransactionInput(graphene.InputObjectType):
 class Query(ObjectType):
     """GraphQL Queries"""
     
+    investments = Field(InvestmentType)
+    investment_history = List(InvestmentHistoryType)
+
     transactions = List(
         TransactionType,
         filters=graphene.Argument(TransactionFilters)
@@ -47,6 +65,20 @@ class Query(ObjectType):
     
     summary = Field(SummaryType, month=Int(), year=Int())
     
+    def resolve_investment_history(self, info):
+        from app import read_investment_history
+        return read_investment_history()
+
+    def resolve_investments(self, info):
+        from app import read_investments
+        data = read_investments()
+        return InvestmentType(
+            bank_balance=data.get('bank_balance', 0.0),
+            hysa_balance=data.get('hysa_balance', 0.0),
+            stock_value=data.get('stock_value', 0.0),
+            last_updated=data.get('last_updated')
+        )
+
     def resolve_transactions(self, info, filters=None):
         """Get all transactions with optional filters"""
         # Import here to avoid circular imports
@@ -57,9 +89,9 @@ class Query(ObjectType):
         if filters:
             filtered = filter_transactions(
                 transactions,
-                filters.get('type'),
-                filters.get('month'),
-                filters.get('year')
+                filters.type,
+                filters.month,
+                filters.year
             )
         else:
             filtered = transactions
@@ -107,11 +139,11 @@ class CreateTransaction(graphene.Mutation):
     
     def mutate(self, info, input):
         from app import read_transactions, write_transactions, get_next_id, ALLOWED_CATEGORIES
-        
-        type_val = input.get('type')
-        amount = input.get('amount')
-        category = input.get('category')
-        date = input.get('date')
+
+        type_val = input.type
+        amount = input.amount
+        category = input.category
+        date = input.date
         
         # Validation
         if not type_val or not amount or not date:
@@ -160,11 +192,11 @@ class UpdateTransaction(graphene.Mutation):
     
     def mutate(self, info, id, input):
         from app import read_transactions, write_transactions, ALLOWED_CATEGORIES
-        
-        type_val = input.get('type')
-        amount = input.get('amount')
-        category = input.get('category')
-        date = input.get('date')
+
+        type_val = input.type
+        amount = input.amount
+        category = input.category
+        date = input.date
         
         # Validation
         if not type_val or not amount or not date:
@@ -222,11 +254,56 @@ class DeleteTransaction(graphene.Mutation):
         return DeleteTransaction(success=False, error='Transaction not found')
 
 
+class UpdateInvestments(graphene.Mutation):
+    class Arguments:
+        bank_balance = Float()
+        hysa_balance = Float()
+        stock_value = Float()
+
+    investment = Field(InvestmentType)
+    success = Boolean()
+    error = String()
+
+    def mutate(self, info, bank_balance=None, hysa_balance=None, stock_value=None):
+        from app import read_investments, write_investments, read_investment_history, write_investment_history
+        data = read_investments()
+        if bank_balance is not None:
+            data['bank_balance'] = bank_balance
+        if hysa_balance is not None:
+            data['hysa_balance'] = hysa_balance
+        if stock_value is not None:
+            data['stock_value'] = stock_value
+        data['last_updated'] = datetime.now().isoformat()
+        write_investments(data)
+
+        # Log to history
+        history = read_investment_history()
+        history.append({
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'bank_balance': data.get('bank_balance', 0.0),
+            'hysa_balance': data.get('hysa_balance', 0.0),
+            'stock_value': data.get('stock_value', 0.0),
+            'net_worth': data.get('bank_balance', 0.0) + data.get('hysa_balance', 0.0) + data.get('stock_value', 0.0),
+        })
+        write_investment_history(history)
+
+        return UpdateInvestments(
+            investment=InvestmentType(
+                bank_balance=data['bank_balance'],
+                hysa_balance=data.get('hysa_balance', 0.0),
+                stock_value=data['stock_value'],
+                last_updated=data['last_updated']
+            ),
+            success=True
+        )
+
+
 class Mutation(ObjectType):
     """GraphQL Mutations"""
     create_transaction = CreateTransaction.Field()
     update_transaction = UpdateTransaction.Field()
     delete_transaction = DeleteTransaction.Field()
+    update_investments = UpdateInvestments.Field()
 
 
 # Create schema

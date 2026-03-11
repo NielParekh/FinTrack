@@ -42,7 +42,7 @@ const GET_TRANSACTIONS_QUERY = `
       amount
       category
       date
-      created_at
+      createdAt
     }
   }
 `;
@@ -68,7 +68,7 @@ const CREATE_TRANSACTION_MUTATION = `
         amount
         category
         date
-        created_at
+        createdAt
       }
     }
   }
@@ -85,7 +85,7 @@ const UPDATE_TRANSACTION_MUTATION = `
         amount
         category
         date
-        created_at
+        createdAt
       }
     }
   }
@@ -96,6 +96,43 @@ const DELETE_TRANSACTION_MUTATION = `
     deleteTransaction(id: $id) {
       success
       error
+    }
+  }
+`;
+
+const GET_INVESTMENTS_QUERY = `
+  query {
+    investments {
+      bankBalance
+      hysaBalance
+      stockValue
+      lastUpdated
+    }
+  }
+`;
+
+const GET_INVESTMENT_HISTORY_QUERY = `
+  query {
+    investmentHistory {
+      date
+      bankBalance
+      hysaBalance
+      stockValue
+      netWorth
+    }
+  }
+`;
+
+const UPDATE_INVESTMENTS_MUTATION = `
+  mutation UpdateInvestments($bankBalance: Float, $hysaBalance: Float, $stockValue: Float) {
+    updateInvestments(bankBalance: $bankBalance, hysaBalance: $hysaBalance, stockValue: $stockValue) {
+      success
+      error
+      investment {
+        bankBalance
+        hysaBalance
+        stockValue
+      }
     }
   }
 `;
@@ -182,6 +219,129 @@ async function fetchTransactions() {
   }
 }
 
+// Load investments
+async function loadInvestments() {
+  try {
+    const data = await graphqlQuery(GET_INVESTMENTS_QUERY);
+    const inv = data.investments;
+    const netWorth = inv.bankBalance + inv.hysaBalance + inv.stockValue;
+
+    document.getElementById('inv-bankBalance').textContent = formatCurrency(inv.bankBalance);
+    document.getElementById('inv-hysaBalance').textContent = formatCurrency(inv.hysaBalance);
+    document.getElementById('inv-stockValue').textContent = formatCurrency(inv.stockValue);
+
+    const netEl = document.getElementById('inv-netWorth');
+    netEl.textContent = formatCurrency(netWorth);
+    netEl.className = `stat-value ${netWorth >= 0 ? 'income' : 'expense'}`;
+
+    document.getElementById('bankBalanceInput').value = inv.bankBalance || '';
+    document.getElementById('hysaBalanceInput').value = inv.hysaBalance || '';
+    document.getElementById('stockValueInput').value = inv.stockValue || '';
+  } catch (error) {
+    console.error('Error loading investments:', error);
+  }
+}
+
+// Save investment value
+async function saveInvestment(type) {
+  const variables = {};
+  if (type === 'bank') {
+    const val = parseFloat(document.getElementById('bankBalanceInput').value);
+    if (isNaN(val) || val < 0) { alert('Please enter a valid amount.'); return; }
+    variables.bankBalance = val;
+  } else if (type === 'hysa') {
+    const val = parseFloat(document.getElementById('hysaBalanceInput').value);
+    if (isNaN(val) || val < 0) { alert('Please enter a valid amount.'); return; }
+    variables.hysaBalance = val;
+  } else {
+    const val = parseFloat(document.getElementById('stockValueInput').value);
+    if (isNaN(val) || val < 0) { alert('Please enter a valid amount.'); return; }
+    variables.stockValue = val;
+  }
+  try {
+    const data = await graphqlQuery(UPDATE_INVESTMENTS_MUTATION, variables);
+    if (data.updateInvestments.success) {
+      await loadInvestments();
+    } else {
+      alert(data.updateInvestments.error || 'Failed to update.');
+    }
+  } catch (error) {
+    alert('Failed to update: ' + error.message);
+  }
+}
+
+// Portfolio stats charts
+let portfolioCharts = { netWorth: null, bank: null, hysa: null, stock: null };
+
+function makeLineChart(ctx, label, data, labels, color) {
+  return new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data,
+        borderColor: color,
+        backgroundColor: color + '1a',
+        tension: 0.3,
+        fill: true,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#71717a' }, grid: { color: '#f4f4f5' } },
+        y: {
+          ticks: {
+            color: '#71717a',
+            callback: v => '$' + v.toLocaleString()
+          },
+          grid: { color: '#f4f4f5' }
+        }
+      }
+    }
+  });
+}
+
+async function loadPortfolioStats() {
+  try {
+    const data = await graphqlQuery(GET_INVESTMENT_HISTORY_QUERY);
+    const history = data.investmentHistory || [];
+
+    const empty = document.getElementById('portfolioStatsEmpty');
+    const charts = document.getElementById('portfolioStatsCharts');
+
+    if (history.length === 0) {
+      empty.style.display = 'block';
+      charts.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    charts.style.display = 'flex';
+
+    const labels = history.map(h => h.date);
+
+    const destroyAndCreate = (key, canvasId, label, vals, color) => {
+      if (portfolioCharts[key]) portfolioCharts[key].destroy();
+      portfolioCharts[key] = makeLineChart(
+        document.getElementById(canvasId),
+        label, vals, labels, color
+      );
+    };
+
+    destroyAndCreate('netWorth', 'netWorthChart', 'Net Worth', history.map(h => h.netWorth), '#18181b');
+    destroyAndCreate('bank', 'bankHistoryChart', 'Bank Balance', history.map(h => h.bankBalance), '#16a34a');
+    destroyAndCreate('hysa', 'hysaHistoryChart', 'HYSA', history.map(h => h.hysaBalance), '#2563eb');
+    destroyAndCreate('stock', 'stockHistoryChart', 'Stock Portfolio', history.map(h => h.stockValue), '#9333ea');
+  } catch (error) {
+    console.error('Error loading portfolio stats:', error);
+  }
+}
+
 // Fetch summary using GraphQL
 async function fetchSummary() {
   try {
@@ -193,7 +353,7 @@ async function fetchSummary() {
     
     const balanceEl = document.getElementById('balance');
     balanceEl.textContent = formatCurrency(summary.balance);
-    balanceEl.className = `summary-value ${summary.balance >= 0 ? 'summary-income' : 'summary-expense'}`;
+    balanceEl.className = `stat-value ${summary.balance >= 0 ? 'income' : 'expense'}`;
   } catch (error) {
     console.error('Error fetching summary:', error);
   }
@@ -356,24 +516,38 @@ async function handleSubmit(event) {
 
 // Tab switching
 function switchTab(tabName) {
-  // Update tab buttons
-  document.querySelectorAll('.tab-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.textContent.includes(tabName === 'transactions' ? 'Transactions' : 'Stats')) {
-      btn.classList.add('active');
-    }
-  });
-  
+  // Update sidebar nav active state
+  document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+  const activeNav = document.getElementById(`nav-${tabName}`);
+  if (activeNav) activeNav.classList.add('active');
+
+  // Update topbar breadcrumb
+  const labels = { transactions: 'Transactions', stats: 'Stats', investments: 'Investments', 'portfolio-stats': 'Portfolio Stats' };
+  const pageLabel = labels[tabName] || tabName;
+  document.getElementById('topbarPage').textContent = pageLabel;
+
   // Update tab content
   document.querySelectorAll('.tab-content').forEach(content => {
     content.classList.remove('active');
   });
-  
+
+  const showSummary = tabName === 'transactions';
+  document.getElementById('transactionSummary').style.display = showSummary ? '' : 'none';
+  document.getElementById('addTransactionBtn').style.display = showSummary ? '' : 'none';
+
   if (tabName === 'transactions') {
     document.getElementById('transactionsTab').classList.add('active');
+    fetchTransactions();
+    fetchSummary();
   } else if (tabName === 'stats') {
     document.getElementById('statsTab').classList.add('active');
     loadStats();
+  } else if (tabName === 'investments') {
+    document.getElementById('investmentsTab').classList.add('active');
+    loadInvestments();
+  } else if (tabName === 'portfolio-stats') {
+    document.getElementById('portfolioStatsTab').classList.add('active');
+    loadPortfolioStats();
   }
 }
 
@@ -800,6 +974,5 @@ function renderCategoryTrendChart(transactions) {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  fetchTransactions();
-  fetchSummary();
+  switchTab('investments');
 });

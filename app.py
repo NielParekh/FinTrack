@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from flask_graphql import GraphQLView
 import json
 import os
 import logging
@@ -43,6 +42,8 @@ logging.getLogger('werkzeug').propagate = True
 # Data directory and file
 DATA_DIR = Path('data')
 DATA_FILE = DATA_DIR / 'transactions.json'
+INVESTMENTS_FILE = DATA_DIR / 'investments.json'
+INVESTMENT_HISTORY_FILE = DATA_DIR / 'investment_history.json'
 
 # Allowed categories for expenses
 ALLOWED_CATEGORIES = {'Food', 'Rent', 'Travel', 'Misc'}
@@ -54,6 +55,41 @@ DATA_DIR.mkdir(exist_ok=True)
 if not DATA_FILE.exists():
     with open(DATA_FILE, 'w') as f:
         json.dump([], f)
+
+# Initialize investments file if it doesn't exist
+if not INVESTMENTS_FILE.exists():
+    with open(INVESTMENTS_FILE, 'w') as f:
+        json.dump({'bank_balance': 0.0, 'hysa_balance': 0.0, 'stock_value': 0.0, 'last_updated': None}, f)
+
+if not INVESTMENT_HISTORY_FILE.exists():
+    with open(INVESTMENT_HISTORY_FILE, 'w') as f:
+        json.dump([], f)
+
+
+def read_investments():
+    try:
+        with open(INVESTMENTS_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {'bank_balance': 0.0, 'stock_value': 0.0, 'last_updated': None}
+
+
+def write_investments(data):
+    with open(INVESTMENTS_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
+
+
+def read_investment_history():
+    try:
+        with open(INVESTMENT_HISTORY_FILE, 'r') as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return []
+
+
+def write_investment_history(data):
+    with open(INVESTMENT_HISTORY_FILE, 'w') as f:
+        json.dump(data, f, indent=2)
 
 
 def read_transactions():
@@ -121,14 +157,22 @@ def log_response(response):
     return response
 
 # GraphQL Endpoint
-app.add_url_rule(
-    '/graphql',
-    view_func=GraphQLView.as_view(
-        'graphql',
-        schema=schema,
-        graphiql=True  # Enable GraphiQL IDE for testing
+@app.route('/graphql', methods=['GET', 'POST'])
+def graphql_endpoint():
+    if request.method == 'GET':
+        return send_from_directory(app.root_path, 'graphiql.html')
+    data = request.get_json()
+    result = schema.execute(
+        data.get('query', ''),
+        variable_values=data.get('variables'),
+        operation_name=data.get('operationName')
     )
-)
+    response = {}
+    if result.data is not None:
+        response['data'] = result.data
+    if result.errors:
+        response['errors'] = [{'message': e.message} for e in result.errors]
+    return jsonify(response)
 
 # Legacy REST API Routes (kept for backward compatibility)
 # These can be removed after frontend is fully migrated to GraphQL
