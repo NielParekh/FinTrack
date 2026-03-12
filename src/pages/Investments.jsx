@@ -1,24 +1,8 @@
 import { useState, useEffect } from 'react'
 import { getInvestments, updateInvestments } from '../lib/api'
+import { fmt, fmtGain, fmtPct } from '../lib/utils'
 
-function fmt(n) {
-  return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
-
-function fmtGain(n) {
-  if (n == null) return { text: '—', cls: '' }
-  const sign = n >= 0 ? '+' : ''
-  return { text: `${sign}$${fmt(Math.abs(n))}`, cls: n >= 0 ? 'gain-pos' : 'gain-neg' }
-}
-
-function fmtPct(gain, basis) {
-  if (!basis) return '—'
-  const pct = (gain / basis) * 100
-  const sign = pct >= 0 ? '+' : ''
-  return `${sign}${pct.toFixed(2)}%`
-}
-
-function CostBasisCard({ title, description, currentValue, value, onSave }) {
+function CostBasisCard({ title, description, value, onSave }) {
   const [input, setInput] = useState('')
   const [editing, setEditing] = useState(false)
 
@@ -53,9 +37,9 @@ function CostBasisCard({ title, description, currentValue, value, onSave }) {
                 autoFocus
               />
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save</button>
-              <button type="button" className="btn" style={{ flex: 1 }} onClick={() => setEditing(false)}>Cancel</button>
+            <div className="cost-basis-actions">
+              <button type="submit" className="btn btn-primary">Save</button>
+              <button type="button" className="btn" onClick={() => setEditing(false)}>Cancel</button>
             </div>
           </form>
         ) : (
@@ -97,14 +81,16 @@ export default function Investments() {
     { label: 'Bank',   invested: inv.bank_balance,             current: inv.bank_balance,  gain: null      },
   ]
 
+  const summaryCards = [
+    { label: 'Net Worth',      value: totalCurrent },
+    { label: 'Total Invested', value: totalInvested },
+    { label: 'Total Gain',     value: totalGain, isGain: true },
+  ]
+
   return (
     <>
-      <div className="summary-grid inv-summary-grid" style={{ marginBottom: 24 }}>
-        {[
-          { label: 'Net Worth',      value: totalCurrent },
-          { label: 'Total Invested', value: totalInvested },
-          { label: 'Total Gain',     value: totalGain, isGain: true },
-        ].map(({ label, value, isGain }) => {
+      <div className="summary-grid inv-summary-grid mb-24">
+        {summaryCards.map(({ label, value, isGain }) => {
           const g = isGain ? fmtGain(totalInvested > 0 ? value : null) : null
           return (
             <div key={label} className="stat-card">
@@ -117,9 +103,9 @@ export default function Investments() {
         })}
       </div>
 
-      <div className="card" style={{ marginBottom: 20 }}>
+      <div className="card mb-20">
         <div className="card-header"><h2>Performance</h2></div>
-        <div className="card-body" style={{ padding: 0 }}>
+        <div className="card-body no-padding">
           <table className="stock-table">
             <thead>
               <tr>
@@ -136,10 +122,10 @@ export default function Investments() {
                 return (
                   <tr key={label}>
                     <td><strong>{label}</strong></td>
-                    <td className="stock-num">{invested != null ? `$${fmt(invested)}` : '—'}</td>
+                    <td className="stock-num">{invested != null ? `$${fmt(invested)}` : '\u2014'}</td>
                     <td className="stock-num">${fmt(current)}</td>
                     <td className={`stock-num ${g.cls}`}>{g.text}</td>
-                    <td className="stock-num">{gain != null ? fmtPct(gain, invested) : '—'}</td>
+                    <td className="stock-num">{gain != null ? fmtPct(gain, invested) : '\u2014'}</td>
                   </tr>
                 )
               })}
@@ -147,13 +133,13 @@ export default function Investments() {
             <tfoot>
               <tr className="stock-total-row">
                 <td><strong>Total</strong></td>
-                <td className="stock-num"><strong>{totalInvested > 0 ? `$${fmt(totalInvested)}` : '—'}</strong></td>
+                <td className="stock-num"><strong>{totalInvested > 0 ? `$${fmt(totalInvested)}` : '\u2014'}</strong></td>
                 <td className="stock-num"><strong>${fmt(totalCurrent)}</strong></td>
                 <td className={`stock-num ${fmtGain(totalInvested > 0 ? totalGain : null).cls}`}>
                   <strong>{fmtGain(totalInvested > 0 ? totalGain : null).text}</strong>
                 </td>
                 <td className="stock-num">
-                  <strong>{totalInvested > 0 ? fmtPct(totalGain, totalInvested) : '—'}</strong>
+                  <strong>{totalInvested > 0 ? fmtPct(totalGain, totalInvested) : '\u2014'}</strong>
                 </td>
               </tr>
             </tfoot>
@@ -161,7 +147,7 @@ export default function Investments() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+      <div className="cost-basis-grid">
         <CostBasisCard
           title="Stock Cost Basis"
           description="Total amount paid for all stock positions ($)"

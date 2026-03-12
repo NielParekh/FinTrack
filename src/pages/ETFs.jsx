@@ -1,9 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getInvestments, upsertEtf, removeEtf } from '../lib/api'
-
-function fmt(n) {
-  return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-}
+import { fmt } from '../lib/utils'
 
 export default function ETFs() {
   const [etfs, setEtfs] = useState([])
@@ -42,9 +39,17 @@ export default function ETFs() {
     setSaveLabel(`Update ${ticker}`)
   }
 
+  function clearForm() {
+    setTickerInput('')
+    setValueInput('')
+    setSaveLabel('Add ETF')
+  }
+
+  const isEditing = saveLabel !== 'Add ETF'
+
   return (
     <>
-      <div className="summary-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: 24 }}>
+      <div className="summary-grid two-col mb-24">
         <div className="stat-card">
           <div className="stat-label">Total ETF Value</div>
           <div className="stat-value">${fmt(etfTotal)}</div>
@@ -55,8 +60,7 @@ export default function ETFs() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: 20, alignItems: 'start' }}>
-        {/* Add / Edit form */}
+      <div className="form-table-layout">
         <div className="card">
           <div className="card-header"><h2>{saveLabel}</h2></div>
           <div className="card-body">
@@ -81,22 +85,14 @@ export default function ETFs() {
                   onChange={e => setValueInput(e.target.value)}
                 />
               </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{saveLabel}</button>
-              {saveLabel !== 'Add ETF' && (
-                <button
-                  type="button"
-                  className="btn"
-                  style={{ width: '100%', marginTop: 6 }}
-                  onClick={() => { setTickerInput(''); setValueInput(''); setSaveLabel('Add ETF') }}
-                >
-                  Cancel
-                </button>
+              <button type="submit" className="btn btn-primary full-width">{saveLabel}</button>
+              {isEditing && (
+                <button type="button" className="btn full-width mt-6" onClick={clearForm}>Cancel</button>
               )}
             </form>
           </div>
         </div>
 
-        {/* Holdings table */}
         <div className="card">
           <div className="card-header"><h2>Holdings</h2></div>
           <div className="card-body">
@@ -117,7 +113,7 @@ export default function ETFs() {
                       <td><span className="etf-ticker-badge">{ticker}</span></td>
                       <td className="stock-num stock-value-cell">${fmt(value)}</td>
                       <td>
-                        <div className="etf-holding-actions" style={{ opacity: 1 }}>
+                        <div className="etf-holding-actions visible">
                           <button className="icon-btn" title="Edit" onClick={() => prefill(ticker, value)}>✏️</button>
                           <button className="icon-btn danger" title="Remove" onClick={() => handleRemove(ticker)}>🗑️</button>
                         </div>

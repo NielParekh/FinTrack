@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { ALLOWED_CATEGORIES } from '../lib/constants'
+import { today } from '../lib/utils'
 
 export default function ExpenseModal({ isOpen, editingExpense, onClose, onSave }) {
-  const today = new Date().toISOString().slice(0, 10)
   const [amount, setAmount] = useState('')
-  const [date, setDate] = useState(today)
+  const [date, setDate] = useState(today())
   const [category, setCategory] = useState(ALLOWED_CATEGORIES[0])
 
   useEffect(() => {
@@ -15,7 +15,7 @@ export default function ExpenseModal({ isOpen, editingExpense, onClose, onSave }
         setCategory(editingExpense.category)
       } else {
         setAmount('')
-        setDate(today)
+        setDate(today())
         setCategory(ALLOWED_CATEGORIES[0])
       }
     }
