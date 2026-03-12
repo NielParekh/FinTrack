@@ -11,4 +11,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   upsertEtf:            (t, v)       => ipcRenderer.invoke('upsert-etf', t, v),
   removeEtf:            (ticker)     => ipcRenderer.invoke('remove-etf', ticker),
   getInvestmentHistory: ()           => ipcRenderer.invoke('get-investment-history'),
+  fetchStockPrices:     (tickers)    => ipcRenderer.invoke('fetch-stock-prices', tickers),
+  upsertStock:          (t, s)       => ipcRenderer.invoke('upsert-stock', t, s),
+  removeStock:          (ticker)     => ipcRenderer.invoke('remove-stock', ticker),
+  updateStockValue:        (value)   => ipcRenderer.invoke('update-stock-value', value),
+  getHysaTransactions:     ()        => ipcRenderer.invoke('get-hysa-transactions'),
+  addHysaTransaction:      (data)    => ipcRenderer.invoke('add-hysa-transaction', data),
+  deleteHysaTransaction:   (id)      => ipcRenderer.invoke('delete-hysa-transaction', id),
 })

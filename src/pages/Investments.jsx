@@ -1,173 +1,185 @@
 import { useState, useEffect } from 'react'
-import { getInvestments, updateInvestments, upsertEtf, removeEtf } from '../lib/api'
+import { getInvestments, updateInvestments } from '../lib/api'
 
 function fmt(n) {
   return Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
+function fmtGain(n) {
+  if (n == null) return { text: '—', cls: '' }
+  const sign = n >= 0 ? '+' : ''
+  return { text: `${sign}$${fmt(Math.abs(n))}`, cls: n >= 0 ? 'gain-pos' : 'gain-neg' }
+}
+
+function fmtPct(gain, basis) {
+  if (!basis) return '—'
+  const pct = (gain / basis) * 100
+  const sign = pct >= 0 ? '+' : ''
+  return `${sign}${pct.toFixed(2)}%`
+}
+
+function CostBasisCard({ title, description, currentValue, value, onSave }) {
+  const [input, setInput] = useState('')
+  const [editing, setEditing] = useState(false)
+
+  function handleEdit() {
+    setInput(value > 0 ? String(value) : '')
+    setEditing(true)
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    await onSave(parseFloat(input) || 0)
+    setEditing(false)
+  }
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h2>{title}</h2>
+        {!editing && <button className="icon-btn" onClick={handleEdit}>✏️</button>}
+      </div>
+      <div className="card-body">
+        {editing ? (
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label>{description}</label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save</button>
+              <button type="button" className="btn" style={{ flex: 1 }} onClick={() => setEditing(false)}>Cancel</button>
+            </div>
+          </form>
+        ) : (
+          <p className="inv-desc">
+            Cost basis: <strong>${fmt(value)}</strong>
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function Investments() {
-  const [inv, setInv] = useState({ bank_balance: 0, hysa_balance: 0, stock_value: 0, etf_total: 0, etfs: [] })
-  const [bankInput, setBankInput] = useState('')
-  const [hysaInput, setHysaInput] = useState('')
-  const [stockInput, setStockInput] = useState('')
-  const [etfTicker, setEtfTicker] = useState('')
-  const [etfValue, setEtfValue] = useState('')
-  const [etfSaveLabel, setEtfSaveLabel] = useState('Add ETF')
+  const [inv, setInv] = useState({
+    bank_balance: 0, hysa_balance: 0,
+    stock_value: 0, stock_cost_basis: 0,
+    hysa_cost_basis: 0, etf_cost_basis: 0,
+    etf_total: 0,
+  })
 
   async function load() {
-    const data = await getInvestments()
-    setInv(data)
+    setInv(await getInvestments())
   }
 
   useEffect(() => { load() }, [])
 
-  async function handleUpdateBank(e) {
-    e.preventDefault()
-    await updateInvestments({ bank_balance: parseFloat(bankInput) || 0, hysa_balance: inv.hysa_balance, stock_value: inv.stock_value })
-    setBankInput('')
-    load()
-  }
+  const stockGain = inv.stock_cost_basis > 0 ? inv.stock_value - inv.stock_cost_basis : null
+  const hysaGain  = inv.hysa_cost_basis > 0  ? inv.hysa_balance - inv.hysa_cost_basis  : null
+  const etfGain   = inv.etf_cost_basis > 0   ? inv.etf_total - inv.etf_cost_basis      : null
 
-  async function handleUpdateHysa(e) {
-    e.preventDefault()
-    await updateInvestments({ bank_balance: inv.bank_balance, hysa_balance: parseFloat(hysaInput) || 0, stock_value: inv.stock_value })
-    setHysaInput('')
-    load()
-  }
+  const totalInvested = (inv.stock_cost_basis || 0) + (inv.hysa_cost_basis || 0) + (inv.etf_cost_basis || 0) + inv.bank_balance
+  const totalCurrent  = inv.bank_balance + inv.hysa_balance + inv.stock_value + inv.etf_total
+  const totalGain     = (stockGain || 0) + (hysaGain || 0) + (etfGain || 0)
 
-  async function handleUpdateStock(e) {
-    e.preventDefault()
-    await updateInvestments({ bank_balance: inv.bank_balance, hysa_balance: inv.hysa_balance, stock_value: parseFloat(stockInput) || 0 })
-    setStockInput('')
-    load()
-  }
-
-  async function handleUpsertEtf(e) {
-    e.preventDefault()
-    await upsertEtf(etfTicker, parseFloat(etfValue) || 0)
-    setEtfTicker('')
-    setEtfValue('')
-    setEtfSaveLabel('Add ETF')
-    load()
-  }
-
-  async function handleRemoveEtf(ticker) {
-    if (!window.confirm(`Remove ${ticker}?`)) return
-    await removeEtf(ticker)
-    load()
-  }
-
-  function prefillEtf(ticker, value) {
-    setEtfTicker(ticker)
-    setEtfValue(String(value))
-    setEtfSaveLabel(`Update ${ticker}`)
-  }
-
-  const netWorth = inv.bank_balance + inv.hysa_balance + inv.stock_value + inv.etf_total
+  const rows = [
+    { label: 'Stocks', invested: inv.stock_cost_basis || null, current: inv.stock_value,   gain: stockGain },
+    { label: 'HYSA',   invested: inv.hysa_cost_basis  || null, current: inv.hysa_balance,  gain: hysaGain  },
+    { label: 'ETFs',   invested: inv.etf_cost_basis   || null, current: inv.etf_total,     gain: etfGain   },
+    { label: 'Bank',   invested: inv.bank_balance,             current: inv.bank_balance,  gain: null      },
+  ]
 
   return (
     <>
-      <div className="summary-grid inv-summary-grid">
+      <div className="summary-grid inv-summary-grid" style={{ marginBottom: 24 }}>
         {[
-          { label: 'Bank Balance', value: inv.bank_balance },
-          { label: 'HYSA Balance', value: inv.hysa_balance },
-          { label: 'Stock Value', value: inv.stock_value },
-          { label: 'ETF Total', value: inv.etf_total },
-          { label: 'Net Worth', value: netWorth },
-        ].map(({ label, value }) => (
-          <div key={label} className="stat-card">
-            <div className="stat-label">{label}</div>
-            <div className="stat-value">${fmt(value)}</div>
-          </div>
-        ))}
+          { label: 'Net Worth',      value: totalCurrent },
+          { label: 'Total Invested', value: totalInvested },
+          { label: 'Total Gain',     value: totalGain, isGain: true },
+        ].map(({ label, value, isGain }) => {
+          const g = isGain ? fmtGain(totalInvested > 0 ? value : null) : null
+          return (
+            <div key={label} className="stat-card">
+              <div className="stat-label">{label}</div>
+              <div className={`stat-value ${g ? g.cls : ''}`}>
+                {isGain && totalInvested > 0 ? g.text : `$${fmt(value)}`}
+              </div>
+            </div>
+          )
+        })}
       </div>
 
-      <div className="inv-grid">
-        {/* Bank */}
-        <div className="card">
-          <div className="card-header"><h2>Bank</h2></div>
-          <div className="card-body">
-            <p className="inv-desc">Checking / savings account balance.</p>
-            <form onSubmit={handleUpdateBank}>
-              <div className="input-group">
-                <label>Balance ($)</label>
-                <input type="number" step="0.01" placeholder={fmt(inv.bank_balance)} value={bankInput} onChange={e => setBankInput(e.target.value)} />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save</button>
-            </form>
-          </div>
+      <div className="card" style={{ marginBottom: 20 }}>
+        <div className="card-header"><h2>Performance</h2></div>
+        <div className="card-body" style={{ padding: 0 }}>
+          <table className="stock-table">
+            <thead>
+              <tr>
+                <th>Asset</th>
+                <th>Amount Invested</th>
+                <th>Current Value</th>
+                <th>Gain / Loss</th>
+                <th>Return</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(({ label, invested, current, gain }) => {
+                const g = fmtGain(gain)
+                return (
+                  <tr key={label}>
+                    <td><strong>{label}</strong></td>
+                    <td className="stock-num">{invested != null ? `$${fmt(invested)}` : '—'}</td>
+                    <td className="stock-num">${fmt(current)}</td>
+                    <td className={`stock-num ${g.cls}`}>{g.text}</td>
+                    <td className="stock-num">{gain != null ? fmtPct(gain, invested) : '—'}</td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="stock-total-row">
+                <td><strong>Total</strong></td>
+                <td className="stock-num"><strong>{totalInvested > 0 ? `$${fmt(totalInvested)}` : '—'}</strong></td>
+                <td className="stock-num"><strong>${fmt(totalCurrent)}</strong></td>
+                <td className={`stock-num ${fmtGain(totalInvested > 0 ? totalGain : null).cls}`}>
+                  <strong>{fmtGain(totalInvested > 0 ? totalGain : null).text}</strong>
+                </td>
+                <td className="stock-num">
+                  <strong>{totalInvested > 0 ? fmtPct(totalGain, totalInvested) : '—'}</strong>
+                </td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
+      </div>
 
-        {/* HYSA */}
-        <div className="card">
-          <div className="card-header"><h2>HYSA</h2></div>
-          <div className="card-body">
-            <p className="inv-desc">High-yield savings account balance.</p>
-            <form onSubmit={handleUpdateHysa}>
-              <div className="input-group">
-                <label>Balance ($)</label>
-                <input type="number" step="0.01" placeholder={fmt(inv.hysa_balance)} value={hysaInput} onChange={e => setHysaInput(e.target.value)} />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save</button>
-            </form>
-          </div>
-        </div>
-
-        {/* Stock */}
-        <div className="card">
-          <div className="card-header"><h2>Stocks</h2></div>
-          <div className="card-body">
-            <p className="inv-desc">Total value of individual stock holdings.</p>
-            <form onSubmit={handleUpdateStock}>
-              <div className="input-group">
-                <label>Value ($)</label>
-                <input type="number" step="0.01" placeholder={fmt(inv.stock_value)} value={stockInput} onChange={e => setStockInput(e.target.value)} />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Save</button>
-            </form>
-          </div>
-        </div>
-
-        {/* ETF Holdings */}
-        <div className="card">
-          <div className="card-header"><h2>ETF Holdings</h2></div>
-          <div className="card-body">
-            <p className="inv-desc">Track individual ETF positions by ticker.</p>
-            <form onSubmit={handleUpsertEtf} style={{ marginBottom: 16 }}>
-              <div className="form-row">
-                <div className="input-group">
-                  <label>Ticker</label>
-                  <input
-                    type="text"
-                    placeholder="VOO"
-                    value={etfTicker}
-                    onChange={e => { setEtfTicker(e.target.value.toUpperCase()); setEtfSaveLabel('Add ETF') }}
-                  />
-                </div>
-                <div className="input-group">
-                  <label>Value ($)</label>
-                  <input type="number" step="0.01" value={etfValue} onChange={e => setEtfValue(e.target.value)} />
-                </div>
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{etfSaveLabel}</button>
-            </form>
-
-            {inv.etfs.length === 0 ? (
-              <p className="etf-empty">No ETFs added yet.</p>
-            ) : (
-              inv.etfs.map(({ ticker, value }) => (
-                <div key={ticker} className="etf-holding-row">
-                  <span className="etf-ticker-badge">{ticker}</span>
-                  <span className="etf-holding-value">${fmt(value)}</span>
-                  <div className="etf-holding-actions">
-                    <button className="icon-btn" title="Edit" onClick={() => prefillEtf(ticker, value)}>✏️</button>
-                    <button className="icon-btn danger" title="Remove" onClick={() => handleRemoveEtf(ticker)}>🗑️</button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <CostBasisCard
+          title="Stock Cost Basis"
+          description="Total amount paid for all stock positions ($)"
+          value={inv.stock_cost_basis}
+          onSave={v => updateInvestments({ stock_cost_basis: v }).then(load)}
+        />
+        <CostBasisCard
+          title="HYSA Cost Basis"
+          description="Total amount deposited into your HYSA ($)"
+          value={inv.hysa_cost_basis}
+          onSave={v => updateInvestments({ hysa_cost_basis: v }).then(load)}
+        />
+        <CostBasisCard
+          title="ETF Cost Basis"
+          description="Total amount paid for all ETF positions ($)"
+          value={inv.etf_cost_basis}
+          onSave={v => updateInvestments({ etf_cost_basis: v }).then(load)}
+        />
       </div>
     </>
   )

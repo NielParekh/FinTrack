@@ -1,5 +1,9 @@
 const PAGE_LABELS = {
   investments: 'Investments',
+  bank: 'Bank',
+  stocks: 'Stocks',
+  hysa: 'HYSA',
+  etfs: 'ETFs',
   'portfolio-stats': 'Portfolio Stats',
   transactions: 'Expenses',
   stats: 'Stats',

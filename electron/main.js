@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const https = require('https')
 
 const isDev = !app.isPackaged
 
@@ -45,13 +46,20 @@ function ensureDataDir() {
       bank_balance: 0.0,
       hysa_balance: 0.0,
       stock_value: 0.0,
+      stock_cost_basis: 0.0,
+      hysa_cost_basis: 0.0,
+      etf_cost_basis: 0.0,
       etfs: {},
+      stocks: {},
       last_updated: null
     }, null, 2), 'utf8')
   }
 
   const histFile = path.join(dir, 'investment_history.json')
   if (!fs.existsSync(histFile)) fs.writeFileSync(histFile, '[]', 'utf8')
+
+  const hysaFile = path.join(dir, 'hysa_transactions.json')
+  if (!fs.existsSync(hysaFile)) fs.writeFileSync(hysaFile, '[]', 'utf8')
 }
 
 // File helpers
@@ -83,6 +91,36 @@ function historySnapshot(data) {
     etf_total: etfTotal,
     net_worth: (data.bank_balance || 0) + (data.hysa_balance || 0) + (data.stock_value || 0) + etfTotal
   }
+}
+
+// Yahoo Finance price fetching (v8 chart API, one request per ticker)
+function fetchPrice(ticker) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: 'query1.finance.yahoo.com',
+      path: `/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1d&range=1d`,
+      headers: { 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36' }
+    }
+    https.get(options, (res) => {
+      let raw = ''
+      res.on('data', chunk => raw += chunk)
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(raw)
+          const price = json.chart?.result?.[0]?.meta?.regularMarketPrice ?? null
+          resolve(price)
+        } catch {
+          resolve(null)
+        }
+      })
+    }).on('error', () => resolve(null))
+  })
+}
+
+async function fetchPrices(tickers) {
+  if (!tickers.length) return {}
+  const entries = await Promise.all(tickers.map(async t => [t, await fetchPrice(t)]))
+  return Object.fromEntries(entries)
 }
 
 // IPC Handlers
@@ -154,12 +192,17 @@ ipcMain.handle('get-investments', () => {
   const data = readJSON('investments.json')
   const etfs = data.etfs || {}
   const etfTotal = Object.values(etfs).reduce((s, v) => s + v, 0)
+  const stocks = data.stocks || {}
   return {
     bank_balance: data.bank_balance || 0,
     hysa_balance: data.hysa_balance || 0,
     stock_value: data.stock_value || 0,
+    stock_cost_basis: data.stock_cost_basis || 0,
+    hysa_cost_basis: data.hysa_cost_basis || 0,
+    etf_cost_basis: data.etf_cost_basis || 0,
     etf_total: etfTotal,
     etfs: Object.entries(etfs).map(([ticker, value]) => ({ ticker, value })),
+    stocks: Object.entries(stocks).map(([ticker, shares]) => ({ ticker, shares })),
     last_updated: data.last_updated || null
   }
 })
@@ -169,6 +212,9 @@ ipcMain.handle('update-investments', (_, payload) => {
   if (payload.bank_balance !== undefined) data.bank_balance = parseFloat(payload.bank_balance)
   if (payload.hysa_balance !== undefined) data.hysa_balance = parseFloat(payload.hysa_balance)
   if (payload.stock_value !== undefined) data.stock_value = parseFloat(payload.stock_value)
+  if (payload.stock_cost_basis !== undefined) data.stock_cost_basis = parseFloat(payload.stock_cost_basis)
+  if (payload.hysa_cost_basis !== undefined) data.hysa_cost_basis = parseFloat(payload.hysa_cost_basis)
+  if (payload.etf_cost_basis !== undefined) data.etf_cost_basis = parseFloat(payload.etf_cost_basis)
   data.last_updated = new Date().toISOString()
   writeJSON('investments.json', data)
 
@@ -203,16 +249,7 @@ ipcMain.handle('upsert-etf', (_, ticker, value) => {
   history.push(historySnapshot(data))
   writeJSON('investment_history.json', history)
 
-  const etfs = data.etfs
-  const etfTotal = Object.values(etfs).reduce((s, v) => s + v, 0)
-  return {
-    bank_balance: data.bank_balance || 0,
-    hysa_balance: data.hysa_balance || 0,
-    stock_value: data.stock_value || 0,
-    etf_total: etfTotal,
-    etfs: Object.entries(etfs).map(([t, v]) => ({ ticker: t, value: v })),
-    last_updated: data.last_updated
-  }
+  return Object.entries(data.etfs).map(([t, v]) => ({ ticker: t, value: v }))
 })
 
 ipcMain.handle('remove-etf', (_, ticker) => {
@@ -224,6 +261,48 @@ ipcMain.handle('remove-etf', (_, ticker) => {
   return { success: true }
 })
 
+ipcMain.handle('fetch-stock-prices', async (_, tickers) => {
+  return fetchPrices(tickers)
+})
+
+ipcMain.handle('upsert-stock', (_, ticker, shares) => {
+  ticker = ticker.trim().toUpperCase()
+  if (!ticker) throw new Error('Ticker cannot be empty')
+  shares = parseFloat(shares)
+  if (isNaN(shares) || shares <= 0) throw new Error('Shares must be > 0')
+
+  const data = readJSON('investments.json')
+  if (!data.stocks) data.stocks = {}
+  data.stocks[ticker] = shares
+  data.last_updated = new Date().toISOString()
+  writeJSON('investments.json', data)
+
+  return Object.entries(data.stocks).map(([t, s]) => ({ ticker: t, shares: s }))
+})
+
+ipcMain.handle('remove-stock', (_, ticker) => {
+  ticker = ticker.trim().toUpperCase()
+  const data = readJSON('investments.json')
+  if (!data.stocks || !(ticker in data.stocks)) throw new Error(`${ticker} not found`)
+  delete data.stocks[ticker]
+  data.last_updated = new Date().toISOString()
+  writeJSON('investments.json', data)
+  return { success: true }
+})
+
+ipcMain.handle('update-stock-value', (_, value) => {
+  const data = readJSON('investments.json')
+  data.stock_value = parseFloat(value) || 0
+  data.last_updated = new Date().toISOString()
+  writeJSON('investments.json', data)
+
+  const history = readJSON('investment_history.json')
+  history.push(historySnapshot(data))
+  writeJSON('investment_history.json', history)
+
+  return { success: true }
+})
+
 ipcMain.handle('get-investment-history', () => {
   const history = readJSON('investment_history.json')
   const byDate = {}
@@ -231,6 +310,65 @@ ipcMain.handle('get-investment-history', () => {
     byDate[entry.date] = entry
   }
   return Object.values(byDate).sort((a, b) => a.date.localeCompare(b.date))
+})
+
+ipcMain.handle('get-hysa-transactions', () => {
+  const txs = readJSON('hysa_transactions.json')
+  return txs.sort((a, b) => {
+    if (b.date !== a.date) return b.date.localeCompare(a.date)
+    return (b.created_at || '').localeCompare(a.created_at || '')
+  })
+})
+
+ipcMain.handle('add-hysa-transaction', (_, { amount, type, date, note }) => {
+  amount = parseFloat(amount)
+  if (!amount || amount <= 0) throw new Error('Amount must be greater than 0')
+  if (!['deposit', 'withdrawal'].includes(type)) throw new Error('Invalid type')
+  if (!date) throw new Error('Date is required')
+
+  const delta = type === 'deposit' ? amount : -amount
+
+  const inv = readJSON('investments.json')
+  inv.hysa_balance = (inv.hysa_balance || 0) + delta
+  inv.last_updated = new Date().toISOString()
+  writeJSON('investments.json', inv)
+
+  const history = readJSON('investment_history.json')
+  history.push(historySnapshot(inv))
+  writeJSON('investment_history.json', history)
+
+  const txs = readJSON('hysa_transactions.json')
+  const newTx = {
+    id: txs.length ? Math.max(...txs.map(t => t.id)) + 1 : 1,
+    type,
+    amount,
+    date,
+    note: note || '',
+    created_at: new Date().toISOString()
+  }
+  txs.push(newTx)
+  writeJSON('hysa_transactions.json', txs)
+
+  return { transaction: newTx, hysa_balance: inv.hysa_balance }
+})
+
+ipcMain.handle('delete-hysa-transaction', (_, id) => {
+  const txs = readJSON('hysa_transactions.json')
+  const idx = txs.findIndex(t => t.id === id)
+  if (idx === -1) throw new Error('Transaction not found')
+
+  const tx = txs[idx]
+  const delta = tx.type === 'deposit' ? -tx.amount : tx.amount
+
+  const inv = readJSON('investments.json')
+  inv.hysa_balance = (inv.hysa_balance || 0) + delta
+  inv.last_updated = new Date().toISOString()
+  writeJSON('investments.json', inv)
+
+  txs.splice(idx, 1)
+  writeJSON('hysa_transactions.json', txs)
+
+  return { hysa_balance: inv.hysa_balance }
 })
 
 // Window

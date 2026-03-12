@@ -3,6 +3,10 @@ import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import Expenses from './pages/Expenses'
 import Investments from './pages/Investments'
+import Bank from './pages/Bank'
+import Stocks from './pages/Stocks'
+import HYSA from './pages/HYSA'
+import ETFs from './pages/ETFs'
 import Stats from './pages/Stats'
 import PortfolioStats from './pages/PortfolioStats'
 
@@ -13,6 +17,10 @@ export default function App() {
   function renderPage() {
     switch (activeTab) {
       case 'investments':    return <Investments />
+      case 'bank':           return <Bank />
+      case 'stocks':         return <Stocks />
+      case 'hysa':           return <HYSA />
+      case 'etfs':           return <ETFs />
       case 'portfolio-stats': return <PortfolioStats />
       case 'transactions':   return (
         <Expenses

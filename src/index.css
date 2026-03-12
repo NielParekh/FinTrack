@@ -573,6 +573,91 @@ html, body {
   padding: 8px 0;
 }
 
+/* Stock Holdings */
+.stock-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stock-table th {
+  text-align: left;
+  padding: 6px 10px;
+  color: var(--muted-foreground);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--border);
+}
+
+.stock-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.stock-table tbody tr:last-child td { border-bottom: none; }
+.stock-table tbody tr:hover { background: var(--muted); }
+
+.stock-num {
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-value-cell {
+  font-weight: 600;
+}
+
+.stock-total-row td {
+  border-top: 2px solid var(--border);
+  border-bottom: none !important;
+  padding-top: 10px;
+}
+
+/* Gain / Loss colors */
+.gain-pos { color: var(--income); }
+.gain-neg { color: var(--expense); }
+
+/* HYSA */
+.hysa-type-toggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.hysa-type-btn {
+  padding: 8px 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--secondary);
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.hysa-type-btn:hover { background: var(--muted); }
+.hysa-type-btn.active.deposit { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.hysa-type-btn.active.withdrawal { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
+
+.hysa-submit-btn { background: var(--primary) !important; }
+.hysa-submit-btn.withdrawal { background: #dc2626 !important; }
+
+.hysa-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.hysa-badge.deposit { background: #dcfce7; color: #15803d; }
+.hysa-badge.withdrawal { background: #fee2e2; color: #dc2626; }
+
+.hysa-pos { color: var(--income); font-weight: 600; }
+.hysa-neg { color: var(--expense); font-weight: 600; }
+
 /* Responsive */
 @media (max-width: 1100px) {
   .inv-summary-grid { grid-template-columns: repeat(3, 1fr); }
