@@ -6,6 +6,7 @@ export default function ExpenseModal({ isOpen, editingExpense, onClose, onSave }
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(today())
   const [category, setCategory] = useState(ALLOWED_CATEGORIES[0])
+  const [note, setNote] = useState('')
 
   useEffect(() => {
     if (isOpen) {
@@ -13,10 +14,12 @@ export default function ExpenseModal({ isOpen, editingExpense, onClose, onSave }
         setAmount(String(editingExpense.amount))
         setDate(editingExpense.date)
         setCategory(editingExpense.category)
+        setNote(editingExpense.note || '')
       } else {
         setAmount('')
         setDate(today())
         setCategory(ALLOWED_CATEGORIES[0])
+        setNote('')
       }
     }
   }, [isOpen, editingExpense])
@@ -25,7 +28,7 @@ export default function ExpenseModal({ isOpen, editingExpense, onClose, onSave }
 
   function handleSubmit(e) {
     e.preventDefault()
-    onSave({ amount: parseFloat(amount), date, category })
+    onSave({ amount: parseFloat(amount), date, category, note: note.trim() })
   }
 
   return (
@@ -67,6 +70,16 @@ export default function ExpenseModal({ isOpen, editingExpense, onClose, onSave }
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+            </div>
+            <div className="input-group">
+              <label>Note (optional)</label>
+              <input
+                type="text"
+                value={note}
+                onChange={e => setNote(e.target.value)}
+                placeholder="e.g. Lunch with friends"
+                maxLength={200}
+              />
             </div>
             <div className="form-actions">
               <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>

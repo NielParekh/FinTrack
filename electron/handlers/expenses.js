@@ -31,6 +31,7 @@ function register() {
       amount: parseFloat(data.amount),
       category: data.category,
       date: data.date,
+      note: data.note || '',
       created_at: new Date().toISOString(),
     }
     transactions.push(newTx)
@@ -43,7 +44,7 @@ function register() {
     const transactions = readJSON('transactions.json')
     const idx = transactions.findIndex(t => t.id === id)
     if (idx === -1) throw new Error('Transaction not found')
-    transactions[idx] = { ...transactions[idx], amount: parseFloat(data.amount), category: data.category, date: data.date }
+    transactions[idx] = { ...transactions[idx], amount: parseFloat(data.amount), category: data.category, date: data.date, note: data.note || '' }
     writeJSON('transactions.json', transactions)
     return transactions[idx]
   })

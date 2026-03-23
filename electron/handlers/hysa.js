@@ -18,6 +18,7 @@ function register() {
     const delta = type === 'deposit' ? amount : -amount
     const inv = readJSON('investments.json')
     inv.hysa_balance = (inv.hysa_balance || 0) + delta
+    inv.hysa_cost_basis = (inv.hysa_cost_basis || 0) + delta
     inv.last_updated = new Date().toISOString()
     writeJSON('investments.json', inv)
     appendSnapshot(inv)
@@ -45,6 +46,7 @@ function register() {
     const delta = tx.type === 'deposit' ? -tx.amount : tx.amount
     const inv = readJSON('investments.json')
     inv.hysa_balance = (inv.hysa_balance || 0) + delta
+    inv.hysa_cost_basis = (inv.hysa_cost_basis || 0) + delta
     inv.last_updated = new Date().toISOString()
     writeJSON('investments.json', inv)
 

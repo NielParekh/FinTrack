@@ -4,6 +4,7 @@ import { fmt } from '../lib/utils'
 
 export default function Stocks() {
   const [stocks, setStocks] = useState([])
+  const [stockCostBasis, setStockCostBasis] = useState(0)
   const [prices, setPrices] = useState({})
   const [pricesLoading, setPricesLoading] = useState(false)
   const [pricesError, setPricesError] = useState(null)
@@ -32,6 +33,7 @@ export default function Stocks() {
     const data = await getInvestments()
     const positions = data.stocks || []
     setStocks(positions)
+    setStockCostBasis(data.stock_cost_basis || 0)
     await loadPrices(positions)
   }
 
@@ -70,10 +72,26 @@ export default function Stocks() {
 
   return (
     <>
-      <div className="summary-grid three-col mb-24">
+      <div className="summary-grid four-col mb-24">
         <div className="stat-card">
           <div className="stat-label">Total Stock Value</div>
           <div className="stat-value">{pricesLoading ? '...' : `$${fmt(totalValue)}`}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Profit / Loss</div>
+          {pricesLoading ? (
+            <div className="stat-value">...</div>
+          ) : stockCostBasis > 0 ? (() => {
+            const gain = totalValue - stockCostBasis
+            const pct = ((gain / stockCostBasis) * 100).toFixed(1)
+            return (
+              <div className={`stat-value ${gain >= 0 ? 'gain-positive' : 'gain-negative'}`}>
+                {gain >= 0 ? '+' : ''}${fmt(Math.abs(gain))} ({gain >= 0 ? '+' : '-'}{Math.abs(pct)}%)
+              </div>
+            )
+          })() : (
+            <div className="stat-value">&mdash;</div>
+          )}
         </div>
         <div className="stat-card">
           <div className="stat-label">Positions</div>

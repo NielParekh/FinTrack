@@ -9,10 +9,13 @@ export default function ETFs() {
   const [valueInput, setValueInput] = useState('')
   const [saveLabel, setSaveLabel] = useState('Add ETF')
 
+  const [etfCostBasis, setEtfCostBasis] = useState(0)
+
   async function load() {
     const data = await getInvestments()
     setEtfs(data.etfs || [])
     setEtfTotal(data.etf_total || 0)
+    setEtfCostBasis(data.etf_cost_basis || 0)
   }
 
   useEffect(() => { load() }, [])
@@ -49,10 +52,24 @@ export default function ETFs() {
 
   return (
     <>
-      <div className="summary-grid two-col mb-24">
+      <div className="summary-grid three-col mb-24">
         <div className="stat-card">
           <div className="stat-label">Total ETF Value</div>
           <div className="stat-value">${fmt(etfTotal)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Profit / Loss</div>
+          {etfCostBasis > 0 ? (() => {
+            const gain = etfTotal - etfCostBasis
+            const pct = ((gain / etfCostBasis) * 100).toFixed(1)
+            return (
+              <div className={`stat-value ${gain >= 0 ? 'gain-positive' : 'gain-negative'}`}>
+                {gain >= 0 ? '+' : ''}${fmt(Math.abs(gain))} ({gain >= 0 ? '+' : '-'}{Math.abs(pct)}%)
+              </div>
+            )
+          })() : (
+            <div className="stat-value">&mdash;</div>
+          )}
         </div>
         <div className="stat-card">
           <div className="stat-label">Positions</div>

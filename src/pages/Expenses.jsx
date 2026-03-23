@@ -77,7 +77,9 @@ export default function Expenses({ showModal, onModalClose }) {
                   {categoryIcons[exp.category] || '📦'}
                 </div>
                 <div className="transaction-info">
-                  <div className="transaction-description">{exp.category}</div>
+                  <div className="transaction-description">
+                    {exp.note || exp.category}
+                  </div>
                   <div className="transaction-meta">
                     <span>{exp.date}</span>
                     <span className="transaction-category">{exp.category}</span>

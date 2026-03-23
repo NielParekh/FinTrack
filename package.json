@@ -24,8 +24,18 @@
   "build": {
     "appId": "com.fintrack.app",
     "productName": "FinTrack",
-    "mac": { "target": "dmg" },
-    "files": ["dist/**", "electron/**"],
-    "extraResources": [{ "from": "data", "to": "data" }]
+    "mac": {
+      "target": "dmg"
+    },
+    "files": [
+      "dist/**",
+      "electron/**"
+    ],
+    "extraResources": [
+      {
+        "from": "data",
+        "to": "data"
+      }
+    ]
   }
 }

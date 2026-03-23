@@ -142,6 +142,10 @@ html, body {
 .summary-grid.single-col { grid-template-columns: 1fr; max-width: 300px; }
 .summary-grid.two-col    { grid-template-columns: repeat(2, 1fr); }
 .summary-grid.three-col  { grid-template-columns: repeat(3, 1fr); }
+.summary-grid.four-col   { grid-template-columns: repeat(4, 1fr); }
+
+.gain-positive { color: #22c55e; }
+.gain-negative { color: #ef4444; }
 
 .stat-card {
   background: var(--card);
@@ -594,7 +598,8 @@ html, body {
   .sidebar { width: 180px; }
   .summary-grid,
   .summary-grid.two-col,
-  .summary-grid.three-col { grid-template-columns: 1fr; }
+  .summary-grid.three-col,
+  .summary-grid.four-col { grid-template-columns: 1fr; }
   .inv-summary-grid { grid-template-columns: 1fr 1fr; }
   .form-row { grid-template-columns: 1fr; }
   .cost-basis-grid { grid-template-columns: 1fr; }
