@@ -80,7 +80,13 @@ function historySnapshot(data) {
 
 function appendSnapshot(data) {
   const history = readJSON('investment_history.json')
-  history.push(historySnapshot(data))
+  const snap = historySnapshot(data)
+  const idx = history.findIndex(h => h.date === snap.date)
+  if (idx !== -1) {
+    history[idx] = snap
+  } else {
+    history.push(snap)
+  }
   writeJSON('investment_history.json', history)
 }
 

@@ -1,6 +1,6 @@
 import { NAV_ITEMS } from '../lib/navigation'
 
-export default function Sidebar({ activeTab, setActiveTab }) {
+export default function Sidebar({ activeTab, setActiveTab, theme, toggleTheme }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">FinTrack</div>
@@ -15,6 +15,12 @@ export default function Sidebar({ activeTab, setActiveTab }) {
           </button>
         ))}
       </nav>
+      <div className="sidebar-footer">
+        <button className="theme-toggle" onClick={toggleTheme}>
+          {theme === 'light' ? '🌙' : '☀️'}
+          {theme === 'light' ? 'Dark mode' : 'Light mode'}
+        </button>
+      </div>
     </aside>
   )
 }

@@ -1,6 +1,15 @@
 import { useState, useEffect } from 'react'
+import {
+  Chart as ChartJS,
+  ArcElement, Tooltip, Legend
+} from 'chart.js'
+import { Doughnut } from 'react-chartjs-2'
 import { getInvestments, updateInvestments } from '../lib/api'
 import { fmt, fmtGain, fmtPct } from '../lib/utils'
+
+ChartJS.register(ArcElement, Tooltip, Legend)
+
+const ALLOC_COLORS = ['#9333ea', '#2563eb', '#d97706', '#16a34a']
 
 function CostBasisCard({ title, description, value, onSave }) {
   const [input, setInput] = useState('')
@@ -87,6 +96,31 @@ export default function Investments() {
     { label: 'Total Gain',     value: totalGain, isGain: true },
   ]
 
+  const allocSlices = [
+    { label: 'Stocks', value: inv.stock_value },
+    { label: 'HYSA',   value: inv.hysa_balance },
+    { label: 'ETFs',   value: inv.etf_total },
+    { label: 'Bank',   value: inv.bank_balance },
+  ]
+
+  const allocData = {
+    labels: allocSlices.map(s => s.label),
+    datasets: [{
+      data: allocSlices.map(s => s.value),
+      backgroundColor: ALLOC_COLORS,
+      borderColor: 'var(--card)',
+      borderWidth: 3,
+      hoverOffset: 6,
+    }]
+  }
+
+  const allocOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    cutout: '60%',
+    plugins: { legend: { display: false }, tooltip: { enabled: true } },
+  }
+
   return (
     <>
       <div className="summary-grid inv-summary-grid mb-24">
@@ -102,6 +136,31 @@ export default function Investments() {
           )
         })}
       </div>
+
+      {totalCurrent > 0 && (
+        <div className="card mb-20">
+          <div className="card-header"><h2>Asset Allocation</h2></div>
+          <div className="card-body">
+            <div className="allocation-section">
+              <div className="allocation-chart-wrap">
+                <Doughnut data={allocData} options={allocOptions} />
+              </div>
+              <ul className="allocation-legend">
+                {allocSlices.map((s, i) => (
+                  <li key={s.label} className="allocation-legend-item">
+                    <span className="allocation-legend-dot" style={{ background: ALLOC_COLORS[i] }} />
+                    <span className="allocation-legend-label">{s.label}</span>
+                    <span className="allocation-legend-value">${fmt(s.value)}</span>
+                    <span className="allocation-legend-pct">
+                      {totalCurrent > 0 ? ((s.value / totalCurrent) * 100).toFixed(1) : '0.0'}%
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="card mb-20">
         <div className="card-header"><h2>Performance</h2></div>
