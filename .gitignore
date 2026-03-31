@@ -20,6 +20,4 @@ yarn-error.log*
 .env*.local
 
 # data (user data, not committed)
-data/transactions.json
-data/investments.json
-data/investment_history.json
+data/
