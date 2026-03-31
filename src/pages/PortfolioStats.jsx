@@ -9,7 +9,9 @@ import { getInvestmentHistory } from '../lib/api'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
-function makeLineChart(history, key, color, label) {
+function makeLineChart(history, key, color, label, theme) {
+  const tickColor = theme === 'dark' ? '#a1a1aa' : '#71717a'
+  const gridColor = theme === 'dark' ? '#27272a' : '#e4e4e7'
   return {
     data: {
       labels: history.map(h => h.date),
@@ -26,13 +28,16 @@ function makeLineChart(history, key, color, label) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
-      scales: { y: { beginAtZero: false } },
+      scales: {
+        y: { beginAtZero: false, ticks: { color: tickColor }, grid: { color: gridColor } },
+        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+      },
     }
   }
 }
 
 const CHARTS = [
-  { key: 'net_worth',    color: '#18181b', label: 'Net Worth' },
+  { key: 'net_worth',    color: { light: '#18181b', dark: '#fafafa' }, label: 'Net Worth' },
   { key: 'bank_balance', color: '#16a34a', label: 'Bank Balance' },
   { key: 'hysa_balance', color: '#2563eb', label: 'HYSA Balance' },
   { key: 'stock_value',  color: '#9333ea', label: 'Stock Value' },
@@ -41,9 +46,18 @@ const CHARTS = [
 
 export default function PortfolioStats() {
   const [history, setHistory] = useState([])
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light')
 
   useEffect(() => {
     getInvestmentHistory().then(setHistory)
+  }, [])
+
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setTheme(document.documentElement.getAttribute('data-theme') || 'light')
+    })
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
+    return () => observer.disconnect()
   }, [])
 
   if (history.length === 0) {
@@ -59,7 +73,8 @@ export default function PortfolioStats() {
   return (
     <div className="stats-container">
       {CHARTS.map(({ key, color, label }) => {
-        const { data, options } = makeLineChart(history, key, color, label)
+        const resolvedColor = typeof color === 'object' ? color[theme] : color
+        const { data, options } = makeLineChart(history, key, resolvedColor, label, theme)
         return (
           <div key={key} className="card chart-card">
             <div className="card-header"><h2>{label}</h2></div>
