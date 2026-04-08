@@ -14,6 +14,12 @@ const CATEGORY_COLORS = {
   Food: '#FF7623',
   Rent: '#02458D',
   Travel: '#16a34a',
+  Utilities: '#0ea5e9',
+  Entertainment: '#f59e0b',
+  Health: '#ef4444',
+  Shopping: '#ec4899',
+  Subscriptions: '#8b5cf6',
+  Education: '#14b8a6',
   Misc: '#9333ea',
 }
 
