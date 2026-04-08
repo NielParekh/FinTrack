@@ -1,7 +1,7 @@
 const { ipcMain } = require('electron')
 const { readJSON, writeJSON, getNextId } = require('../lib/data')
 
-const ALLOWED_CATEGORIES = new Set(['Food', 'Rent', 'Travel', 'Misc'])
+const ALLOWED_CATEGORIES = new Set(['Food', 'Rent', 'Travel', 'Misc', 'Utilities', 'Entertainment', 'Health', 'Shopping', 'Subscriptions', 'Education'])
 
 function validateExpense({ amount, category, date }) {
   if (!amount || !date) throw new Error('Missing required fields')
