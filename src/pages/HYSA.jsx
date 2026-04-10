@@ -1,30 +1,44 @@
 import { useState, useEffect } from 'react'
-import { getInvestments, getHysaTransactions, addHysaTransaction, deleteHysaTransaction } from '../lib/api'
+import { getInvestments, getHysaTransactions, addHysaTransaction, deleteHysaTransaction, updateHysaBalance } from '../lib/api'
 import { fmt, today } from '../lib/utils'
 
 export default function HYSA() {
   const [balance, setBalance] = useState(0)
+  const [principal, setPrincipal] = useState(0)
   const [transactions, setTransactions] = useState([])
-  const [type, setType] = useState('deposit')
+
+  // deposit form
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(today())
   const [note, setNote] = useState('')
 
+  // current value update
+  const [newBalance, setNewBalance] = useState('')
+
   async function load() {
     const [inv, txs] = await Promise.all([getInvestments(), getHysaTransactions()])
-    setBalance(inv.hysa_balance)
+    setBalance(inv.hysa_balance || 0)
+    setPrincipal(inv.hysa_cost_basis || 0)
     setTransactions(txs)
   }
 
   useEffect(() => { load() }, [])
 
-  async function handleSubmit(e) {
+  async function handleDeposit(e) {
     e.preventDefault()
     if (!amount) return
-    await addHysaTransaction({ amount: parseFloat(amount), type, date, note })
+    await addHysaTransaction({ amount: parseFloat(amount), type: 'deposit', date, note })
     setAmount('')
     setNote('')
     setDate(today())
+    load()
+  }
+
+  async function handleUpdateBalance(e) {
+    e.preventDefault()
+    if (newBalance === '') return
+    await updateHysaBalance(parseFloat(newBalance))
+    setNewBalance('')
     load()
   }
 
@@ -34,81 +48,95 @@ export default function HYSA() {
     load()
   }
 
-  const totalDeposited = transactions.filter(t => t.type === 'deposit').reduce((s, t) => s + t.amount, 0)
-  const totalWithdrawn = transactions.filter(t => t.type === 'withdrawal').reduce((s, t) => s + t.amount, 0)
+  const interestEarned = balance - principal
+  const interestPct = principal > 0 ? (interestEarned / principal) * 100 : 0
 
   return (
     <>
-      <div className="summary-grid three-col mb-24">
+      <div className="summary-grid four-col mb-24">
         <div className="stat-card">
-          <div className="stat-label">Current Balance</div>
+          <div className="stat-label">Principal</div>
+          <div className="stat-value">${fmt(principal)}</div>
+        </div>
+        <div className="stat-card">
+          <div className="stat-label">Current Value</div>
           <div className="stat-value">${fmt(balance)}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Total Deposited</div>
-          <div className="stat-value income">${fmt(totalDeposited)}</div>
+          <div className="stat-label">Interest Earned</div>
+          <div className={`stat-value ${interestEarned >= 0 ? 'income' : 'expense'}`}>
+            {interestEarned >= 0 ? '+' : ''}${fmt(interestEarned)}
+          </div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Total Withdrawn</div>
-          <div className="stat-value expense">${fmt(totalWithdrawn)}</div>
+          <div className="stat-label">Return</div>
+          <div className={`stat-value ${interestPct >= 0 ? 'income' : 'expense'}`}>
+            {interestPct >= 0 ? '+' : ''}{interestPct.toFixed(2)}%
+          </div>
         </div>
       </div>
 
       <div className="form-table-layout narrow-form">
-        <div className="card">
-          <div className="card-header"><h2>Add Transaction</h2></div>
-          <div className="card-body">
-            <form onSubmit={handleSubmit}>
-              <div className="hysa-type-toggle">
-                <button
-                  type="button"
-                  className={`hysa-type-btn${type === 'deposit' ? ' active deposit' : ''}`}
-                  onClick={() => setType('deposit')}
-                >
-                  + Deposit
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="card">
+            <div className="card-header"><h2>Add to Principal</h2></div>
+            <div className="card-body">
+              <form onSubmit={handleDeposit}>
+                <div className="input-group">
+                  <label>Amount ($)</label>
+                  <input type="number" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} required />
+                </div>
+                <div className="input-group">
+                  <label>Date</label>
+                  <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+                </div>
+                <div className="input-group">
+                  <label>Note <span className="label-hint">(optional)</span></label>
+                  <input type="text" placeholder="e.g. Monthly transfer" value={note} onChange={e => setNote(e.target.value)} />
+                </div>
+                <button type="submit" className="btn btn-primary full-width hysa-submit-btn">
+                  + Add to Principal
                 </button>
-                <button
-                  type="button"
-                  className={`hysa-type-btn${type === 'withdrawal' ? ' active withdrawal' : ''}`}
-                  onClick={() => setType('withdrawal')}
-                >
-                  − Withdraw
+              </form>
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header"><h2>Update Current Value</h2></div>
+            <div className="card-body">
+              <form onSubmit={handleUpdateBalance}>
+                <div className="input-group">
+                  <label>Total Account Value ($)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder={fmt(balance)}
+                    value={newBalance}
+                    onChange={e => setNewBalance(e.target.value)}
+                    required
+                  />
+                  <div className="label-hint" style={{ marginTop: '4px' }}>
+                    Set this to the current balance shown in your bank account (principal + interest).
+                  </div>
+                </div>
+                <button type="submit" className="btn btn-primary full-width">
+                  Update Value
                 </button>
-              </div>
-
-              <div className="input-group">
-                <label>Amount ($)</label>
-                <input type="number" step="0.01" placeholder="0.00" value={amount} onChange={e => setAmount(e.target.value)} required />
-              </div>
-
-              <div className="input-group">
-                <label>Date</label>
-                <input type="date" value={date} onChange={e => setDate(e.target.value)} required />
-              </div>
-
-              <div className="input-group">
-                <label>Note <span className="label-hint">(optional)</span></label>
-                <input type="text" placeholder="e.g. Monthly transfer" value={note} onChange={e => setNote(e.target.value)} />
-              </div>
-
-              <button type="submit" className={`btn btn-primary full-width hysa-submit-btn${type === 'withdrawal' ? ' withdrawal' : ''}`}>
-                {type === 'deposit' ? '+ Add Deposit' : '\u2212 Record Withdrawal'}
-              </button>
-            </form>
+              </form>
+            </div>
           </div>
         </div>
 
         <div className="card">
-          <div className="card-header"><h2>Transaction History</h2></div>
+          <div className="card-header"><h2>Principal History</h2></div>
           <div className="card-body">
             {transactions.length === 0 ? (
-              <p className="etf-empty">No transactions yet. Add a deposit or withdrawal to get started.</p>
+              <p className="etf-empty">No deposits yet. Add a deposit to get started.</p>
             ) : (
               <table className="stock-table">
                 <thead>
                   <tr>
                     <th>Date</th>
-                    <th>Type</th>
                     <th>Amount</th>
                     <th>Note</th>
                     <th></th>
@@ -118,14 +146,7 @@ export default function HYSA() {
                   {transactions.map(tx => (
                     <tr key={tx.id}>
                       <td className="muted-cell">{tx.date}</td>
-                      <td>
-                        <span className={`hysa-badge ${tx.type}`}>
-                          {tx.type === 'deposit' ? '+ Deposit' : '\u2212 Withdrawal'}
-                        </span>
-                      </td>
-                      <td className={`stock-num ${tx.type === 'deposit' ? 'hysa-pos' : 'hysa-neg'}`}>
-                        {tx.type === 'deposit' ? '+' : '\u2212'}${fmt(tx.amount)}
-                      </td>
+                      <td className="stock-num hysa-pos">+${fmt(tx.amount)}</td>
                       <td className="muted-cell">{tx.note || '\u2014'}</td>
                       <td>
                         <div className="etf-holding-actions visible">

@@ -15,3 +15,4 @@ export const updateStockValue        = (value)  => window.electronAPI.updateStoc
 export const getHysaTransactions     = ()       => window.electronAPI.getHysaTransactions()
 export const addHysaTransaction      = (data)   => window.electronAPI.addHysaTransaction(data)
 export const deleteHysaTransaction   = (id)     => window.electronAPI.deleteHysaTransaction(id)
+export const updateHysaBalance       = (value)  => window.electronAPI.updateHysaBalance(value)
