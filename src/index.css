@@ -386,6 +386,41 @@ html, body {
 
 .chart-container canvas { max-height: 300px; }
 
+.chart-card--tall .chart-container { height: 400px; }
+.chart-card--tall .chart-container canvas { max-height: 400px; }
+
+.summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.summary-chip {
+  flex: 1;
+  min-width: 120px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-chip-label {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.summary-chip-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
 /* ── Modal ─────────────────────────────────────────────── */
 .modal {
   position: fixed;
