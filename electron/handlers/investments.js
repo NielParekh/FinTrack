@@ -10,12 +10,14 @@ function formatInvestmentData(data) {
     bank_balance: data.bank_balance || 0,
     hysa_balance: data.hysa_balance || 0,
     stock_value: data.stock_value || 0,
-    stock_cost_basis: data.stock_cost_basis || 0,
     hysa_cost_basis: data.hysa_cost_basis || 0,
     etf_cost_basis: data.etf_cost_basis || 0,
     etf_total: etfTotal,
     etfs: Object.entries(etfs).map(([ticker, value]) => ({ ticker, value })),
-    stocks: Object.entries(stocks).map(([ticker, shares]) => ({ ticker, shares })),
+    stocks: Object.entries(stocks).map(([ticker, pos]) => {
+      if (typeof pos === 'number') return { ticker, shares: pos, invested: 0 }
+      return { ticker, shares: pos.shares || 0, invested: pos.invested || 0 }
+    }),
     last_updated: data.last_updated || null,
   }
 }
@@ -27,7 +29,7 @@ function register() {
 
   ipcMain.handle('update-investments', (_, payload) => {
     const data = readJSON('investments.json')
-    const fields = ['bank_balance', 'hysa_balance', 'stock_value', 'stock_cost_basis', 'hysa_cost_basis', 'etf_cost_basis']
+    const fields = ['bank_balance', 'hysa_balance', 'stock_value', 'hysa_cost_basis', 'etf_cost_basis']
     for (const field of fields) {
       if (payload[field] !== undefined) data[field] = parseFloat(payload[field])
     }
@@ -60,18 +62,20 @@ function register() {
     return { success: true }
   })
 
-  ipcMain.handle('upsert-stock', (_, ticker, shares) => {
+  ipcMain.handle('upsert-stock', (_, ticker, shares, invested) => {
     ticker = ticker.trim().toUpperCase()
     if (!ticker) throw new Error('Ticker cannot be empty')
     shares = parseFloat(shares)
     if (isNaN(shares) || shares <= 0) throw new Error('Shares must be > 0')
+    invested = parseFloat(invested) || 0
+    if (invested < 0) throw new Error('Invested amount must be >= 0')
 
     const data = readJSON('investments.json')
     if (!data.stocks) data.stocks = {}
-    data.stocks[ticker] = shares
+    data.stocks[ticker] = { shares, invested }
     data.last_updated = new Date().toISOString()
     writeJSON('investments.json', data)
-    return Object.entries(data.stocks).map(([t, s]) => ({ ticker: t, shares: s }))
+    return formatInvestmentData(data).stocks
   })
 
   ipcMain.handle('remove-stock', (_, ticker) => {
@@ -81,6 +85,7 @@ function register() {
     delete data.stocks[ticker]
     data.last_updated = new Date().toISOString()
     writeJSON('investments.json', data)
+    appendSnapshot(data)
     return { success: true }
   })
 
