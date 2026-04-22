@@ -14,10 +14,10 @@ function formatInvestmentData(data) {
     etf_cost_basis: data.etf_cost_basis || 0,
     etf_total: etfTotal,
     etfs: Object.entries(etfs).map(([ticker, value]) => ({ ticker, value })),
-    stocks: Object.entries(stocks).map(([ticker, pos]) => {
-      if (typeof pos === 'number') return { ticker, shares: pos, invested: 0 }
-      return { ticker, shares: pos.shares || 0, invested: pos.invested || 0 }
-    }),
+    stocks: Object.entries(stocks).map(([ticker, val]) => ({
+      ticker,
+      shares: typeof val === 'object' ? val.shares : val,
+    })),
     last_updated: data.last_updated || null,
   }
 }
@@ -62,17 +62,15 @@ function register() {
     return { success: true }
   })
 
-  ipcMain.handle('upsert-stock', (_, ticker, shares, invested) => {
+  ipcMain.handle('upsert-stock', (_, ticker, shares) => {
     ticker = ticker.trim().toUpperCase()
     if (!ticker) throw new Error('Ticker cannot be empty')
     shares = parseFloat(shares)
     if (isNaN(shares) || shares <= 0) throw new Error('Shares must be > 0')
-    invested = parseFloat(invested) || 0
-    if (invested < 0) throw new Error('Invested amount must be >= 0')
 
     const data = readJSON('investments.json')
     if (!data.stocks) data.stocks = {}
-    data.stocks[ticker] = { shares, invested }
+    data.stocks[ticker] = { shares }
     data.last_updated = new Date().toISOString()
     writeJSON('investments.json', data)
     return formatInvestmentData(data).stocks

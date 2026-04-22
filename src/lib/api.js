@@ -9,7 +9,7 @@ export const upsertEtf            = (t, v)    => window.electronAPI.upsertEtf(t,
 export const removeEtf            = (ticker)  => window.electronAPI.removeEtf(ticker)
 export const getInvestmentHistory = ()        => window.electronAPI.getInvestmentHistory()
 export const fetchStockPrices     = (tickers) => window.electronAPI.fetchStockPrices(tickers)
-export const upsertStock          = (t, s, i) => window.electronAPI.upsertStock(t, s, i)
+export const upsertStock          = (t, s)    => window.electronAPI.upsertStock(t, s)
 export const removeStock          = (ticker)  => window.electronAPI.removeStock(ticker)
 export const updateStockValue        = (value)  => window.electronAPI.updateStockValue(value)
 export const getHysaTransactions     = ()       => window.electronAPI.getHysaTransactions()
