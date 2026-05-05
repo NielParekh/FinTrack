@@ -31,12 +31,6 @@
     "files": [
       "dist/**",
       "electron/**"
-    ],
-    "extraResources": [
-      {
-        "from": "data",
-        "to": "data"
-      }
     ]
   }
 }
