@@ -4,8 +4,6 @@ A local-first personal finance desktop app for tracking expenses and investments
 
 Built with Electron, React, and Chart.js.
 
-> Add a screenshot: replace this line with `![FinTrack Screenshot](screenshot.png)`
-
 ---
 
 ## Features
