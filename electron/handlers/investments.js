@@ -10,6 +10,7 @@ function formatInvestmentData(data) {
     bank_balance: data.bank_balance || 0,
     hysa_balance: data.hysa_balance || 0,
     stock_value: data.stock_value || 0,
+    stock_cost_basis: data.stock_cost_basis || 0,
     hysa_cost_basis: data.hysa_cost_basis || 0,
     etf_cost_basis: data.etf_cost_basis || 0,
     etf_total: etfTotal,
@@ -18,6 +19,7 @@ function formatInvestmentData(data) {
       ticker,
       shares: typeof val === 'object' ? val.shares : val,
     })),
+    stock_realized_gains: data.stock_realized_gains || 0,
     last_updated: data.last_updated || null,
   }
 }
@@ -94,6 +96,27 @@ function register() {
     writeJSON('investments.json', data)
     appendSnapshot(data)
     return { success: true }
+  })
+
+  ipcMain.handle('add-stock-sale', (_, ticker, salePrice) => {
+    ticker = ticker.trim().toUpperCase()
+    salePrice = parseFloat(salePrice)
+    if (isNaN(salePrice) || salePrice < 0) throw new Error('Invalid sale price')
+
+    const data = readJSON('investments.json')
+    if (!data.stocks || !(ticker in data.stocks)) throw new Error(`${ticker} not found`)
+
+    const val = data.stocks[ticker]
+    const shares = typeof val === 'object' ? val.shares : val
+    const proceeds = shares * salePrice
+    data.stock_realized_gains = (data.stock_realized_gains || 0) + proceeds
+    data.stock_value = (data.stock_value || 0) + proceeds
+
+    delete data.stocks[ticker]
+    data.last_updated = new Date().toISOString()
+    writeJSON('investments.json', data)
+    appendSnapshot(data)
+    return { stock_realized_gains: data.stock_realized_gains }
   })
 
   ipcMain.handle('fetch-stock-prices', async (_, tickers) => {

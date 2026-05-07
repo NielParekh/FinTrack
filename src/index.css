@@ -254,6 +254,8 @@ html, body {
 
 .refresh-btn { font-size: 16px; }
 .refresh-btn:disabled { opacity: 0.3; }
+.icon-btn.sell-btn { font-weight: 700; color: #16a34a; }
+.icon-btn.sell-btn:hover { background: #dcfce7; color: #15803d; }
 
 /* ── Layouts ───────────────────────────────────────────── */
 .form-table-layout {

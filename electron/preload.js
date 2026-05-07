@@ -15,6 +15,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   upsertStock:          (t, s)       => ipcRenderer.invoke('upsert-stock', t, s),
   removeStock:          (ticker)     => ipcRenderer.invoke('remove-stock', ticker),
   updateStockValue:        (value)   => ipcRenderer.invoke('update-stock-value', value),
+  addStockSale:            (t, p)    => ipcRenderer.invoke('add-stock-sale', t, p),
   getHysaTransactions:     ()        => ipcRenderer.invoke('get-hysa-transactions'),
   addHysaTransaction:      (data)    => ipcRenderer.invoke('add-hysa-transaction', data),
   deleteHysaTransaction:   (id)      => ipcRenderer.invoke('delete-hysa-transaction', id),

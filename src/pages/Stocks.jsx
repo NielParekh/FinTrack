@@ -1,15 +1,69 @@
 import { useState, useEffect } from 'react'
-import { getInvestments, fetchStockPrices, upsertStock, removeStock, updateStockValue } from '../lib/api'
+import { getInvestments, fetchStockPrices, upsertStock, removeStock, updateStockValue, addStockSale } from '../lib/api'
 import { fmt } from '../lib/utils'
+
+function SellModal({ ticker, shares, onConfirm, onClose }) {
+  const [salePrice, setSalePrice] = useState('')
+  const [error, setError] = useState('')
+
+  const proceeds = parseFloat(salePrice) > 0 ? shares * parseFloat(salePrice) : null
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const val = parseFloat(salePrice)
+    if (isNaN(val) || val <= 0) { setError('Enter a valid sale price per share'); return }
+    onConfirm(val)
+  }
+
+  return (
+    <div className="modal" onClick={onClose}>
+      <div className="modal-content" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>Sell {ticker}</h2>
+          <button className="close-btn" onClick={onClose}>✕</button>
+        </div>
+        <div className="modal-body">
+          <p className="inv-desc">Enter the price per share you sold at.</p>
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label>Sale price per share ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={salePrice}
+                onChange={e => { setSalePrice(e.target.value); setError('') }}
+                autoFocus
+              />
+            </div>
+            {proceeds != null && (
+              <p className="inv-desc" style={{ marginBottom: 12 }}>
+                Total proceeds: <strong>${fmt(proceeds)}</strong> ({shares} shares × ${fmt(parseFloat(salePrice))})
+              </p>
+            )}
+            {error && <p className="error-text">{error}</p>}
+            <div className="form-actions">
+              <button type="button" className="btn" onClick={onClose}>Cancel</button>
+              <button type="submit" className="btn btn-primary">Record Sale</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function Stocks() {
   const [stocks, setStocks] = useState([])
   const [prices, setPrices] = useState({})
+  const [realizedGains, setRealizedGains] = useState(0)
   const [pricesLoading, setPricesLoading] = useState(false)
   const [pricesError, setPricesError] = useState(null)
   const [tickerInput, setTickerInput] = useState('')
   const [sharesInput, setSharesInput] = useState('')
   const [saveLabel, setSaveLabel] = useState('Add Stock')
+  const [sellStock, setSellStock] = useState(null)
 
   async function loadPrices(positions) {
     if (!positions.length) return
@@ -32,6 +86,7 @@ export default function Stocks() {
     const data = await getInvestments()
     const positions = data.stocks || []
     setStocks(positions)
+    setRealizedGains(data.stock_realized_gains || 0)
     await loadPrices(positions)
   }
 
@@ -53,6 +108,12 @@ export default function Stocks() {
     load()
   }
 
+  async function handleSellConfirm(salePrice) {
+    await addStockSale(sellStock.ticker, salePrice)
+    setSellStock(null)
+    load()
+  }
+
   function prefill(ticker, shares) {
     setTickerInput(ticker)
     setSharesInput(String(shares))
@@ -70,15 +131,24 @@ export default function Stocks() {
 
   return (
     <>
+      {sellStock && (
+        <SellModal
+          ticker={sellStock.ticker}
+          shares={sellStock.shares}
+          onConfirm={handleSellConfirm}
+          onClose={() => setSellStock(null)}
+        />
+      )}
+
       <div className="summary-grid two-col mb-24">
         <div className="stat-card">
           <div className="stat-label">Total Stock Value</div>
           <div className="stat-value">{pricesLoading ? '...' : `$${fmt(totalValue)}`}</div>
         </div>
         <div className="stat-card">
-          <div className="stat-label">Prices</div>
-          <div className="stat-value price-status">
-            {pricesLoading ? 'Fetching...' : pricesError ? 'Error' : stocks.length === 0 ? '—' : 'Live'}
+          <div className="stat-label">Realized Gains</div>
+          <div className="stat-value" style={{ color: realizedGains >= 0 ? 'var(--income)' : 'var(--expense)' }}>
+            {realizedGains >= 0 ? '+' : ''}{`$${fmt(Math.abs(realizedGains))}`}
           </div>
         </div>
       </div>
@@ -159,6 +229,7 @@ export default function Stocks() {
                         </td>
                         <td>
                           <div className="etf-holding-actions visible">
+                            <button className="icon-btn sell-btn" title="Sell" onClick={() => setSellStock({ ticker, shares })}>$</button>
                             <button className="icon-btn" title="Edit" onClick={() => prefill(ticker, shares)}>✏️</button>
                             <button className="icon-btn danger" title="Remove" onClick={() => handleRemove(ticker)}>🗑️</button>
                           </div>
