@@ -66,7 +66,7 @@ export default function Investments() {
     bank_balance: 0, hysa_balance: 0,
     stock_value: 0, stock_cost_basis: 0,
     hysa_cost_basis: 0, etf_cost_basis: 0,
-    etf_total: 0,
+    etf_total: 0, stock_realized_gains: 0,
   })
 
   async function load() {
@@ -75,7 +75,8 @@ export default function Investments() {
 
   useEffect(() => { load() }, [])
 
-  const stockGain = inv.stock_cost_basis > 0 ? inv.stock_value - inv.stock_cost_basis : null
+  const realized = inv.stock_realized_gains || 0
+  const stockGain = inv.stock_cost_basis > 0 ? (inv.stock_value - inv.stock_cost_basis) + realized : (realized !== 0 ? realized : null)
   const hysaGain  = inv.hysa_cost_basis > 0  ? inv.hysa_balance - inv.hysa_cost_basis  : null
   const etfGain   = inv.etf_cost_basis > 0   ? inv.etf_total - inv.etf_cost_basis      : null
 

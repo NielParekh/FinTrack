@@ -22,7 +22,7 @@ Built with Electron, React, and Chart.js.
 ### Investment Portfolio
 - **Overview** — net worth, total invested, total gain/loss, and asset allocation doughnut chart
 - **Bank** — track your checking/savings balance
-- **Stocks** — add positions by ticker + share count with live prices fetched from Yahoo Finance; real-time P&L
+- **Stocks** — add positions by ticker + share count with live prices fetched from Yahoo Finance; real-time P&L; record sales to track realized gains
 - **ETFs** — track ETF positions by ticker + current dollar value with P&L
 - **HYSA** — log deposits to track principal separately from interest earned; update current value to calculate interest return
 

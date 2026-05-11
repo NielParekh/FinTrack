@@ -2,16 +2,14 @@ import { useState, useEffect } from 'react'
 import { getInvestments, fetchStockPrices, upsertStock, removeStock, updateStockValue, addStockSale } from '../lib/api'
 import { fmt } from '../lib/utils'
 
-function SellModal({ ticker, shares, onConfirm, onClose }) {
-  const [salePrice, setSalePrice] = useState('')
+function SellModal({ ticker, onConfirm, onClose }) {
+  const [gain, setGain] = useState('')
   const [error, setError] = useState('')
-
-  const proceeds = parseFloat(salePrice) > 0 ? shares * parseFloat(salePrice) : null
 
   function handleSubmit(e) {
     e.preventDefault()
-    const val = parseFloat(salePrice)
-    if (isNaN(val) || val <= 0) { setError('Enter a valid sale price per share'); return }
+    const val = parseFloat(gain)
+    if (isNaN(val)) { setError('Enter the gain or loss in dollars'); return }
     onConfirm(val)
   }
 
@@ -23,25 +21,19 @@ function SellModal({ ticker, shares, onConfirm, onClose }) {
           <button className="close-btn" onClick={onClose}>✕</button>
         </div>
         <div className="modal-body">
-          <p className="inv-desc">Enter the price per share you sold at.</p>
+          <p className="inv-desc">Enter how much you gained or lost on this sale. Use a negative number for a loss.</p>
           <form onSubmit={handleSubmit}>
             <div className="input-group">
-              <label>Sale price per share ($)</label>
+              <label>Gain / loss ($)</label>
               <input
                 type="number"
                 step="0.01"
-                min="0"
                 placeholder="0.00"
-                value={salePrice}
-                onChange={e => { setSalePrice(e.target.value); setError('') }}
+                value={gain}
+                onChange={e => { setGain(e.target.value); setError('') }}
                 autoFocus
               />
             </div>
-            {proceeds != null && (
-              <p className="inv-desc" style={{ marginBottom: 12 }}>
-                Total proceeds: <strong>${fmt(proceeds)}</strong> ({shares} shares × ${fmt(parseFloat(salePrice))})
-              </p>
-            )}
             {error && <p className="error-text">{error}</p>}
             <div className="form-actions">
               <button type="button" className="btn" onClick={onClose}>Cancel</button>
@@ -108,8 +100,8 @@ export default function Stocks() {
     load()
   }
 
-  async function handleSellConfirm(salePrice) {
-    await addStockSale(sellStock.ticker, salePrice)
+  async function handleSellConfirm(gain) {
+    await addStockSale(sellStock.ticker, gain)
     setSellStock(null)
     load()
   }
@@ -134,7 +126,6 @@ export default function Stocks() {
       {sellStock && (
         <SellModal
           ticker={sellStock.ticker}
-          shares={sellStock.shares}
           onConfirm={handleSellConfirm}
           onClose={() => setSellStock(null)}
         />

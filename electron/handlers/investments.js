@@ -98,19 +98,15 @@ function register() {
     return { success: true }
   })
 
-  ipcMain.handle('add-stock-sale', (_, ticker, salePrice) => {
+  ipcMain.handle('add-stock-sale', (_, ticker, gain) => {
     ticker = ticker.trim().toUpperCase()
-    salePrice = parseFloat(salePrice)
-    if (isNaN(salePrice) || salePrice < 0) throw new Error('Invalid sale price')
+    gain = parseFloat(gain)
+    if (isNaN(gain)) throw new Error('Invalid gain')
 
     const data = readJSON('investments.json')
     if (!data.stocks || !(ticker in data.stocks)) throw new Error(`${ticker} not found`)
 
-    const val = data.stocks[ticker]
-    const shares = typeof val === 'object' ? val.shares : val
-    const proceeds = shares * salePrice
-    data.stock_realized_gains = (data.stock_realized_gains || 0) + proceeds
-    data.stock_value = (data.stock_value || 0) + proceeds
+    data.stock_realized_gains = (data.stock_realized_gains || 0) + gain
 
     delete data.stocks[ticker]
     data.last_updated = new Date().toISOString()
