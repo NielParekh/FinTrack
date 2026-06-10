@@ -5,8 +5,6 @@ export const NAV_ITEMS = [
   { id: 'hysa',            label: 'HYSA' },
   { id: 'etfs',            label: 'ETFs' },
   { id: 'portfolio-stats', label: 'Portfolio Stats' },
-  { id: 'transactions',    label: 'Expenses' },
-  { id: 'stats',           label: 'Stats' },
 ]
 
 export const PAGE_LABELS = Object.fromEntries(NAV_ITEMS.map(i => [i.id, i.label]))

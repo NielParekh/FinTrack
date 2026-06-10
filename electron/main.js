@@ -1,13 +1,11 @@
 const { app, BrowserWindow } = require('electron')
 const path = require('path')
 const { ensureDataDir } = require('./lib/data')
-const expenses = require('./handlers/expenses')
 const investments = require('./handlers/investments')
 const hysa = require('./handlers/hysa')
 const isDev = !app.isPackaged
 
 // Register all IPC handlers
-expenses.register()
 investments.register()
 hysa.register()
 

@@ -1,8 +1,3 @@
-export const getExpenses          = ()        => window.electronAPI.getExpenses()
-export const addExpense           = (data)    => window.electronAPI.addExpense(data)
-export const updateExpense        = (id, d)   => window.electronAPI.updateExpense(id, d)
-export const deleteExpense        = (id)      => window.electronAPI.deleteExpense(id)
-export const getSummary           = ()        => window.electronAPI.getSummary()
 export const getInvestments       = ()        => window.electronAPI.getInvestments()
 export const updateInvestments    = (data)    => window.electronAPI.updateInvestments(data)
 export const upsertEtf            = (t, v)    => window.electronAPI.upsertEtf(t, v)
