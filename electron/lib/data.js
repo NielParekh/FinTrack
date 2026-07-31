@@ -15,7 +15,7 @@ function ensureDataDir() {
 
   if (!isDev) {
     const resourcesData = path.join(process.resourcesPath, 'data')
-    const files = ['transactions.json', 'investments.json', 'investment_history.json']
+    const files = ['investments.json', 'investment_history.json']
     for (const file of files) {
       const dest = path.join(dir, file)
       if (!fs.existsSync(dest)) {
@@ -26,7 +26,6 @@ function ensureDataDir() {
   }
 
   const defaults = {
-    'transactions.json': '[]',
     'investments.json': JSON.stringify({
       bank_balance: 0.0,
       hysa_balance: 0.0,
