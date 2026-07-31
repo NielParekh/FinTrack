@@ -12,7 +12,7 @@ const CHART_COLORS = [
 ]
 
 // Card payments/transfers are money moving, not money spent
-const NON_SPEND = new Set(['Payments'])
+const NON_SPEND = new Set(['Payments', 'Refunds'])
 
 function monthKey(date) {
   return date.slice(0, 7) // YYYY-MM

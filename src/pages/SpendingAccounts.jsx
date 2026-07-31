@@ -1,14 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
-import { usePlaidLink } from 'react-plaid-link'
+import { useState, useEffect } from 'react'
 import {
-  createLinkToken, exchangePublicToken, getSpendingAccounts,
+  linkCardHosted, cancelHostedLink, getSpendingAccounts,
   removeSpendingAccount, syncTransactions,
 } from '../lib/api'
 
 export default function SpendingAccounts() {
   const [accounts, setAccounts] = useState([])
-  const [linkToken, setLinkToken] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [linking, setLinking] = useState(false)
   const [error, setError] = useState('')
   const [syncMsg, setSyncMsg] = useState('')
 
@@ -22,44 +21,34 @@ export default function SpendingAccounts() {
 
   useEffect(() => { load() }, [])
 
-  const onSuccess = useCallback(async (publicToken, metadata) => {
-    setLinkToken(null)
-    setBusy(true)
-    setError('')
-    try {
-      await exchangePublicToken(publicToken, metadata?.institution?.name)
-      await load()
-      setSyncMsg('Card linked. Syncing transactions…')
-      const res = await syncTransactions()
-      setSyncMsg(`Synced ${res.added} transactions.`)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setBusy(false)
-    }
-  }, [])
-
-  const { open, ready } = usePlaidLink({
-    token: linkToken,
-    onSuccess,
-    onExit: () => setLinkToken(null),
-  })
-
-  useEffect(() => {
-    if (linkToken && ready) open()
-  }, [linkToken, ready, open])
-
   async function handleLink() {
     setError('')
     setBusy(true)
+    setLinking(true)
+    setSyncMsg('Finish linking in your browser — this page updates automatically when you’re done.')
     try {
-      const res = await createLinkToken()
-      setLinkToken(res.link_token)
+      const res = await linkCardHosted()
+      setLinking(false)
+      if (res.cancelled) {
+        setSyncMsg(res.timeout ? 'Linking timed out. Click "+ Link a card" to try again.' : '')
+      } else {
+        await load()
+        setSyncMsg('Card linked. Syncing transactions…')
+        const sync = await syncTransactions()
+        setSyncMsg(`Synced ${sync.added} transactions.`)
+      }
     } catch (err) {
       setError(err.message)
+      setSyncMsg('')
     } finally {
+      setLinking(false)
       setBusy(false)
     }
+  }
+
+  function handleCancelLink() {
+    cancelHostedLink()
+    setSyncMsg('')
   }
 
   async function handleSync() {
@@ -142,6 +131,11 @@ export default function SpendingAccounts() {
             <button className="btn btn-primary" onClick={handleLink} disabled={busy}>
               + Link a card
             </button>
+            {linking && (
+              <button className="btn btn-secondary" onClick={handleCancelLink}>
+                Cancel linking
+              </button>
+            )}
             {accounts.length > 0 && (
               <button className="btn btn-secondary" onClick={handleSync} disabled={busy}>
                 ⟳ Sync now

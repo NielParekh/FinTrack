@@ -1,4 +1,4 @@
-const { ipcMain } = require('electron')
+const { ipcMain, shell } = require('electron')
 const { readJSON, writeJSON } = require('../lib/data')
 const { getPlaidClient, encryptToken, decryptToken } = require('../lib/plaid')
 
@@ -34,7 +34,12 @@ function plaidError(err) {
 
 function toStoredTransaction(tx, itemId, merchantMap) {
   const merchant = tx.merchant_name || tx.name || 'Unknown'
-  const auto = mapCategory(tx.personal_finance_category)
+  // Negative amount = money back on the card. Card payments/transfers keep
+  // their 'Payments' category; everything else negative is a refund, and the
+  // merchant map is skipped so a refund isn't filed under the spend category.
+  const primary = tx.personal_finance_category?.primary
+  const isRefund = tx.amount < 0 && primary !== 'TRANSFER_IN' && primary !== 'LOAN_PAYMENTS'
+  const auto = isRefund ? 'Refunds' : mapCategory(tx.personal_finance_category)
   return {
     id: tx.transaction_id,
     item_id: itemId,
@@ -45,59 +50,86 @@ function toStoredTransaction(tx, itemId, merchantMap) {
     amount: tx.amount, // Plaid: positive = money out
     pending: tx.pending,
     plaid_category: tx.personal_finance_category?.detailed || null,
-    category: merchantMap[merchant] || auto,
-    user_category: merchantMap[merchant] || null,
+    category: isRefund ? 'Refunds' : (merchantMap[merchant] || auto),
+    user_category: isRefund ? null : (merchantMap[merchant] || null),
   }
 }
 
+async function exchangeAndStore(publicToken, institutionName) {
+  const client = getPlaidClient()
+  const exchange = await client.itemPublicTokenExchange({ public_token: publicToken })
+  const accessToken = exchange.data.access_token
+  const itemId = exchange.data.item_id
+
+  const accountsRes = await client.accountsGet({ access_token: accessToken })
+  const accounts = accountsRes.data.accounts.map(a => ({
+    id: a.account_id,
+    name: a.name,
+    mask: a.mask,
+    type: a.subtype || a.type,
+  }))
+
+  const items = readJSON('plaid_items.json')
+  const { token, enc } = encryptToken(accessToken)
+  items.push({
+    item_id: itemId,
+    access_token: token,
+    enc,
+    institution: institutionName || 'Bank',
+    accounts,
+    cursor: null,
+    added_at: new Date().toISOString(),
+    status: 'ok',
+  })
+  writeJSON('plaid_items.json', items)
+  return { item_id: itemId, institution: institutionName, accounts }
+}
+
+// OAuth banks (Chase, Amex) block Electron's embedded window, so linking
+// runs through Plaid Hosted Link in the user's default browser instead.
+let hostedLinkAborted = false
+
 function register() {
-  ipcMain.handle('create-link-token', async () => {
+  ipcMain.handle('link-card-hosted', async () => {
     try {
-      const res = await getPlaidClient().linkTokenCreate({
+      const client = getPlaidClient()
+      const res = await client.linkTokenCreate({
         user: { client_user_id: 'fintrack-local-user' },
         client_name: 'FinTrack',
         products: ['transactions'],
+        transactions: { days_requested: 730 },
         country_codes: ['US'],
         language: 'en',
+        hosted_link: { url_lifetime_seconds: 900 },
       })
-      return { link_token: res.data.link_token }
+      const linkToken = res.data.link_token
+      await shell.openExternal(res.data.hosted_link_url)
+
+      hostedLinkAborted = false
+      const deadline = Date.now() + 15 * 60 * 1000
+      while (Date.now() < deadline) {
+        if (hostedLinkAborted) return { cancelled: true }
+        await new Promise(r => setTimeout(r, 3000))
+        const status = await client.linkTokenGet({ link_token: linkToken })
+        for (const session of status.data.link_sessions || []) {
+          const added = session.results?.item_add_results || []
+          if (added.length) {
+            return await exchangeAndStore(added[0].public_token, added[0].institution?.name)
+          }
+          if ((session.events || []).some(e => e.event_name === 'EXIT')) {
+            return { cancelled: true }
+          }
+        }
+      }
+      return { cancelled: true, timeout: true }
     } catch (err) {
       throw plaidError(err)
     }
   })
 
-  ipcMain.handle('exchange-public-token', async (_, publicToken, institutionName) => {
-    try {
-      const client = getPlaidClient()
-      const exchange = await client.itemPublicTokenExchange({ public_token: publicToken })
-      const accessToken = exchange.data.access_token
-      const itemId = exchange.data.item_id
-
-      const accountsRes = await client.accountsGet({ access_token: accessToken })
-      const accounts = accountsRes.data.accounts.map(a => ({
-        id: a.account_id,
-        name: a.name,
-        mask: a.mask,
-        type: a.subtype || a.type,
-      }))
-
-      const items = readJSON('plaid_items.json')
-      const { token, enc } = encryptToken(accessToken)
-      items.push({
-        item_id: itemId,
-        access_token: token,
-        enc,
-        institution: institutionName || 'Bank',
-        accounts,
-        cursor: null,
-        added_at: new Date().toISOString(),
-        status: 'ok',
-      })
-      writeJSON('plaid_items.json', items)
-      return { item_id: itemId, institution: institutionName, accounts }
-    } catch (err) {
-      throw plaidError(err)
-    }
+  ipcMain.handle('cancel-hosted-link', () => {
+    hostedLinkAborted = true
+    return { success: true }
   })
 
   ipcMain.handle('get-spending-accounts', () => {
