@@ -235,6 +235,9 @@ html, body {
 .btn-primary { background: var(--primary); color: var(--primary-foreground); }
 .btn-primary:hover { opacity: 0.85; }
 
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { opacity: 0.85; }
+
 .btn-secondary { background: var(--secondary); color: var(--secondary-foreground); }
 .btn-secondary:hover { background: var(--border); }
 

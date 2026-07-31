@@ -12,6 +12,11 @@ export default function HYSA() {
   const [date, setDate] = useState(today())
   const [note, setNote] = useState('')
 
+  // withdraw form
+  const [wAmount, setWAmount] = useState('')
+  const [wDate, setWDate] = useState(today())
+  const [wNote, setWNote] = useState('')
+
   // current value update
   const [newBalance, setNewBalance] = useState('')
 
@@ -31,6 +36,16 @@ export default function HYSA() {
     setAmount('')
     setNote('')
     setDate(today())
+    load()
+  }
+
+  async function handleWithdraw(e) {
+    e.preventDefault()
+    if (!wAmount) return
+    await addHysaTransaction({ amount: parseFloat(wAmount), type: 'withdrawal', date: wDate, note: wNote })
+    setWAmount('')
+    setWNote('')
+    setWDate(today())
     load()
   }
 
@@ -102,6 +117,29 @@ export default function HYSA() {
           </div>
 
           <div className="card">
+            <div className="card-header"><h2>Withdraw from Principal</h2></div>
+            <div className="card-body">
+              <form onSubmit={handleWithdraw}>
+                <div className="input-group">
+                  <label>Amount ($)</label>
+                  <input type="number" step="0.01" placeholder="0.00" value={wAmount} onChange={e => setWAmount(e.target.value)} required />
+                </div>
+                <div className="input-group">
+                  <label>Date</label>
+                  <input type="date" value={wDate} onChange={e => setWDate(e.target.value)} required />
+                </div>
+                <div className="input-group">
+                  <label>Note <span className="label-hint">(optional)</span></label>
+                  <input type="text" placeholder="e.g. Transfer to checking" value={wNote} onChange={e => setWNote(e.target.value)} />
+                </div>
+                <button type="submit" className="btn btn-danger full-width">
+                  &minus; Withdraw from Principal
+                </button>
+              </form>
+            </div>
+          </div>
+
+          <div className="card">
             <div className="card-header"><h2>Update Current Value</h2></div>
             <div className="card-body">
               <form onSubmit={handleUpdateBalance}>
@@ -131,12 +169,13 @@ export default function HYSA() {
           <div className="card-header"><h2>Principal History</h2></div>
           <div className="card-body">
             {transactions.length === 0 ? (
-              <p className="etf-empty">No deposits yet. Add a deposit to get started.</p>
+              <p className="etf-empty">No transactions yet.</p>
             ) : (
               <table className="stock-table">
                 <thead>
                   <tr>
                     <th>Date</th>
+                    <th>Type</th>
                     <th>Amount</th>
                     <th>Note</th>
                     <th></th>
@@ -146,8 +185,11 @@ export default function HYSA() {
                   {transactions.map(tx => (
                     <tr key={tx.id}>
                       <td className="muted-cell">{tx.date}</td>
-                      <td className="stock-num hysa-pos">+${fmt(tx.amount)}</td>
-                      <td className="muted-cell">{tx.note || '\u2014'}</td>
+                      <td className="muted-cell" style={{ textTransform: 'capitalize' }}>{tx.type}</td>
+                      <td className={`stock-num ${tx.type === 'withdrawal' ? 'expense' : 'hysa-pos'}`}>
+                        {tx.type === 'withdrawal' ? '-' : '+'}${fmt(tx.amount)}
+                      </td>
+                      <td className="muted-cell">{tx.note || '—'}</td>
                       <td>
                         <div className="etf-holding-actions visible">
                           <button className="icon-btn danger" title="Delete" onClick={() => handleDelete(tx.id)}>🗑️</button>
