@@ -15,4 +15,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   addHysaTransaction:      (data)    => ipcRenderer.invoke('add-hysa-transaction', data),
   deleteHysaTransaction:   (id)      => ipcRenderer.invoke('delete-hysa-transaction', id),
   updateHysaBalance:       (value)   => ipcRenderer.invoke('update-hysa-balance', value),
+  createLinkToken:         ()        => ipcRenderer.invoke('create-link-token'),
+  exchangePublicToken:     (t, name) => ipcRenderer.invoke('exchange-public-token', t, name),
+  getSpendingAccounts:     ()        => ipcRenderer.invoke('get-spending-accounts'),
+  removeSpendingAccount:   (itemId)  => ipcRenderer.invoke('remove-spending-account', itemId),
+  syncTransactions:        ()        => ipcRenderer.invoke('sync-transactions'),
+  getSpendingTransactions: ()        => ipcRenderer.invoke('get-spending-transactions'),
+  getSpendingCategories:   ()        => ipcRenderer.invoke('get-spending-categories'),
+  setTransactionCategory:  (id, c, r) => ipcRenderer.invoke('set-transaction-category', id, c, r),
 })

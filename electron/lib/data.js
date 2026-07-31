@@ -40,6 +40,12 @@ function ensureDataDir() {
     }, null, 2),
     'investment_history.json': '[]',
     'hysa_transactions.json': '[]',
+    'plaid_items.json': '[]',
+    'spending_transactions.json': '[]',
+    'spending_categories.json': JSON.stringify({
+      categories: ['Groceries', 'Dining', 'Transport', 'Travel', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Personal', 'Fees', 'Payments', 'Other'],
+      merchant_map: {},
+    }, null, 2),
   }
 
   for (const [file, content] of Object.entries(defaults)) {
@@ -58,7 +64,12 @@ function readJSON(filename) {
 }
 
 function writeJSON(filename, data) {
-  fs.writeFileSync(path.join(getDataDir(), filename), JSON.stringify(data, null, 2), 'utf8')
+  // Atomic write: write to a temp file then rename, so a crash mid-write
+  // can never leave a truncated/corrupted data file.
+  const target = path.join(getDataDir(), filename)
+  const tmp = target + '.tmp'
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2), 'utf8')
+  fs.renameSync(tmp, target)
 }
 
 function getNextId(items) {

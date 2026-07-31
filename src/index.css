@@ -117,6 +117,24 @@ html, body {
 .nav-item:hover { background: var(--accent); color: var(--accent-foreground); }
 .nav-item.active { background: var(--primary); color: var(--primary-foreground); }
 
+.nav-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-section + .nav-section { margin-top: 16px; }
+
+.nav-section-label {
+  padding: 0 12px 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
 /* ── Main area ─────────────────────────────────────────── */
 .main {
   flex: 1;
@@ -237,6 +255,33 @@ html, body {
 
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-danger:hover { opacity: 0.85; }
+
+.error-banner { color: var(--danger); font-size: 0.875rem; }
+.link-actions { display: flex; gap: 8px; margin-top: 14px; }
+.sync-status { margin-top: 10px; font-size: 0.8125rem; }
+
+.page-grid { display: flex; flex-direction: column; gap: 16px; }
+
+/* red amount in tables (spending purchases, HYSA withdrawals) */
+.stock-num.expense { color: var(--expense); font-weight: 600; }
+
+.spending-summary-row {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 16px;
+}
+.spend-total { font-size: 2rem; font-weight: 700; }
+.spend-chart { height: 220px; }
+.tx-pending { opacity: 0.55; }
+.month-select, .category-select {
+  background: var(--secondary);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+}
 
 .btn-secondary { background: var(--secondary); color: var(--secondary-foreground); }
 .btn-secondary:hover { background: var(--border); }

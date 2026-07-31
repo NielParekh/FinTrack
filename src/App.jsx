@@ -7,6 +7,8 @@ import Stocks from './pages/Stocks'
 import HYSA from './pages/HYSA'
 import ETFs from './pages/ETFs'
 import PortfolioStats from './pages/PortfolioStats'
+import Spending from './pages/Spending'
+import SpendingAccounts from './pages/SpendingAccounts'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('investments')
@@ -27,6 +29,8 @@ export default function App() {
       case 'hysa':           return <HYSA />
       case 'etfs':           return <ETFs />
       case 'portfolio-stats': return <PortfolioStats />
+      case 'spending':          return <Spending />
+      case 'spending-accounts': return <SpendingAccounts />
       default:               return null
     }
   }

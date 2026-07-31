@@ -16,7 +16,8 @@ yarn-error.log*
 *.log
 /logs/
 
-# local env files
+# local env files (contain Plaid secrets — never commit)
+.env
 .env*.local
 
 # data (user data, not committed)

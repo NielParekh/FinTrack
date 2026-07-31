@@ -1,13 +1,16 @@
 const { app, BrowserWindow } = require('electron')
 const path = require('path')
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 const { ensureDataDir } = require('./lib/data')
 const investments = require('./handlers/investments')
 const hysa = require('./handlers/hysa')
+const spending = require('./handlers/spending')
 const isDev = !app.isPackaged
 
 // Register all IPC handlers
 investments.register()
 hysa.register()
+spending.register()
 
 function createWindow() {
   const win = new BrowserWindow({
