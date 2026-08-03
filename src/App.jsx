@@ -8,6 +8,7 @@ import HYSA from './pages/HYSA'
 import ETFs from './pages/ETFs'
 import PortfolioStats from './pages/PortfolioStats'
 import Spending from './pages/Spending'
+import SpendingCharts from './pages/SpendingCharts'
 import SpendingAccounts from './pages/SpendingAccounts'
 
 export default function App() {
@@ -30,6 +31,7 @@ export default function App() {
       case 'etfs':           return <ETFs />
       case 'portfolio-stats': return <PortfolioStats />
       case 'spending':          return <Spending />
+      case 'spending-charts':   return <SpendingCharts />
       case 'spending-accounts': return <SpendingAccounts />
       default:               return null
     }

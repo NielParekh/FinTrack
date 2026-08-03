@@ -16,6 +16,7 @@ export const NAV_SECTIONS = [
     label: 'Spending',
     items: [
       { id: 'spending',          label: 'Overview' },
+      { id: 'spending-charts',   label: 'Charts' },
       { id: 'spending-accounts', label: 'Linked Cards' },
     ],
   },

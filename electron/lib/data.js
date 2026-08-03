@@ -42,7 +42,7 @@ function ensureDataDir() {
     'plaid_items.json': '[]',
     'spending_transactions.json': '[]',
     'spending_categories.json': JSON.stringify({
-      categories: ['Groceries', 'Dining', 'Transport', 'Travel', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Personal', 'Fees', 'Refunds', 'Payments', 'Other'],
+      categories: ['Groceries', 'Dining', 'Transport', 'Travel', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Fitness', 'Personal', 'Fees', 'Refunds', 'Payments', 'Other'],
       merchant_map: {},
     }, null, 2),
   }

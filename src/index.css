@@ -272,6 +272,21 @@ html, body {
 }
 .spend-total { font-size: 2rem; font-weight: 700; }
 .spend-chart { height: 220px; }
+.chart-tall { height: 280px; }
+.chart-filters {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+.chart-filters label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+}
+.chart-filters-note { margin-left: auto; font-size: 0.75rem; }
 .tx-pending { opacity: 0.55; }
 .month-select, .category-select {
   background: var(--secondary);

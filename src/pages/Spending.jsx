@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
-import { getSpendingTransactions, getSpendingCategories, setTransactionCategory } from '../lib/api'
+import { getSpendingTransactions, getSpendingCategories, getSpendingAccounts, setTransactionCategory } from '../lib/api'
 import { fmt } from '../lib/utils'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
@@ -21,14 +21,18 @@ function monthKey(date) {
 export default function Spending() {
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
+  const [items, setItems] = useState([])
   const [month, setMonth] = useState(monthKey(new Date().toISOString()))
   const [error, setError] = useState('')
 
   async function load() {
     try {
-      const [txs, cats] = await Promise.all([getSpendingTransactions(), getSpendingCategories()])
+      const [txs, cats, linked] = await Promise.all([
+        getSpendingTransactions(), getSpendingCategories(), getSpendingAccounts(),
+      ])
       setTransactions(txs)
       setCategories(cats)
+      setItems(linked)
     } catch (err) {
       setError(err.message)
     }
@@ -41,6 +45,17 @@ export default function Spending() {
     set.add(monthKey(new Date().toISOString()))
     return [...set].sort().reverse()
   }, [transactions])
+
+  // account_id → "Chase ••1234" for the Card column
+  const cardByAccount = useMemo(() => {
+    const map = {}
+    for (const item of items) {
+      for (const a of item.accounts) {
+        map[a.id] = `${item.institution}${a.mask ? ` ••${a.mask}` : ''}`
+      }
+    }
+    return map
+  }, [items])
 
   const monthTxs = useMemo(
     () => transactions.filter(t => monthKey(t.date) === month),
@@ -138,6 +153,7 @@ export default function Spending() {
                 <tr>
                   <th>Date</th>
                   <th>Merchant</th>
+                  <th>Card</th>
                   <th>Category</th>
                   <th>Amount</th>
                 </tr>
@@ -147,6 +163,7 @@ export default function Spending() {
                   <tr key={tx.id} className={tx.pending ? 'tx-pending' : ''}>
                     <td className="muted-cell">{tx.date}{tx.pending ? ' ⏳' : ''}</td>
                     <td>{tx.merchant}</td>
+                    <td className="muted-cell">{cardByAccount[tx.account_id] || '—'}</td>
                     <td>
                       <select
                         className="category-select"

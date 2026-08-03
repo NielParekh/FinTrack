@@ -8,6 +8,7 @@ function mapCategory(pfc) {
   const detailed = pfc.detailed || ''
   const primary = pfc.primary || ''
   if (detailed === 'FOOD_AND_DRINK_GROCERIES') return 'Groceries'
+  if (detailed === 'PERSONAL_CARE_GYMS_AND_FITNESS_CENTERS') return 'Fitness'
   const byPrimary = {
     FOOD_AND_DRINK: 'Dining',
     TRANSPORTATION: 'Transport',
@@ -21,6 +22,7 @@ function mapCategory(pfc) {
     GENERAL_SERVICES: 'Personal',
     BANK_FEES: 'Fees',
     LOAN_PAYMENTS: 'Payments',
+    LOAN_DISBURSEMENTS: 'Payments',
     TRANSFER_IN: 'Payments',
     TRANSFER_OUT: 'Payments',
   }
@@ -34,12 +36,15 @@ function plaidError(err) {
 
 function toStoredTransaction(tx, itemId, merchantMap) {
   const merchant = tx.merchant_name || tx.name || 'Unknown'
-  // Negative amount = money back on the card. Card payments/transfers keep
-  // their 'Payments' category; everything else negative is a refund, and the
-  // merchant map is skipped so a refund isn't filed under the spend category.
+  // Negative amount = money back on the card: either a card payment or a
+  // refund. Chase reports payments as LOAN_DISBURSEMENTS (not LOAN_PAYMENTS),
+  // and the name check catches payments Plaid fails to tag at all. Refunds
+  // skip the merchant map so they aren't filed under the spend category.
   const primary = tx.personal_finance_category?.primary
-  const isRefund = tx.amount < 0 && primary !== 'TRANSFER_IN' && primary !== 'LOAN_PAYMENTS'
-  const auto = isRefund ? 'Refunds' : mapCategory(tx.personal_finance_category)
+  const isPayment = ['LOAN_PAYMENTS', 'LOAN_DISBURSEMENTS', 'TRANSFER_IN'].includes(primary)
+    || /payment[^a-z]*thank\s*you|thank\s*you[^a-z]*payment/i.test(tx.name || '')
+  const isRefund = tx.amount < 0 && !isPayment
+  const auto = isPayment ? 'Payments' : isRefund ? 'Refunds' : mapCategory(tx.personal_finance_category)
   return {
     id: tx.transaction_id,
     item_id: itemId,
@@ -50,8 +55,8 @@ function toStoredTransaction(tx, itemId, merchantMap) {
     amount: tx.amount, // Plaid: positive = money out
     pending: tx.pending,
     plaid_category: tx.personal_finance_category?.detailed || null,
-    category: isRefund ? 'Refunds' : (merchantMap[merchant] || auto),
-    user_category: isRefund ? null : (merchantMap[merchant] || null),
+    category: (isRefund || isPayment) ? auto : (merchantMap[merchant] || auto),
+    user_category: (isRefund || isPayment) ? null : (merchantMap[merchant] || null),
   }
 }
 
