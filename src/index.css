@@ -287,6 +287,7 @@ html, body {
   color: var(--muted-foreground);
 }
 .chart-filters-note { margin-left: auto; font-size: 0.75rem; }
+.btn-relink { padding: 4px 10px; font-size: 0.8125rem; }
 .tx-pending { opacity: 0.55; }
 .month-select, .category-select {
   background: var(--secondary);

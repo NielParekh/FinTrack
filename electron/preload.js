@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteHysaTransaction:   (id)      => ipcRenderer.invoke('delete-hysa-transaction', id),
   updateHysaBalance:       (value)   => ipcRenderer.invoke('update-hysa-balance', value),
   linkCardHosted:          ()        => ipcRenderer.invoke('link-card-hosted'),
+  relinkCardHosted:        (itemId)  => ipcRenderer.invoke('relink-card-hosted', itemId),
   cancelHostedLink:        ()        => ipcRenderer.invoke('cancel-hosted-link'),
   getSpendingAccounts:     ()        => ipcRenderer.invoke('get-spending-accounts'),
   removeSpendingAccount:   (itemId)  => ipcRenderer.invoke('remove-spending-account', itemId),

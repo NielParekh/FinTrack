@@ -94,39 +94,88 @@ async function exchangeAndStore(publicToken, institutionName) {
 // runs through Plaid Hosted Link in the user's default browser instead.
 let hostedLinkAborted = false
 
+// Opens a Hosted Link session in the browser and polls until resolveSession
+// returns a result, the user exits, or the session times out.
+async function runHostedLink(extraConfig, resolveSession) {
+  const client = getPlaidClient()
+  const res = await client.linkTokenCreate({
+    user: { client_user_id: 'fintrack-local-user' },
+    client_name: 'FinTrack',
+    country_codes: ['US'],
+    language: 'en',
+    hosted_link: { url_lifetime_seconds: 900 },
+    ...extraConfig,
+  })
+  const linkToken = res.data.link_token
+  await shell.openExternal(res.data.hosted_link_url)
+
+  hostedLinkAborted = false
+  const deadline = Date.now() + 15 * 60 * 1000
+  while (Date.now() < deadline) {
+    if (hostedLinkAborted) return { cancelled: true }
+    await new Promise(r => setTimeout(r, 3000))
+    const status = await client.linkTokenGet({ link_token: linkToken })
+    for (const session of status.data.link_sessions || []) {
+      const result = await resolveSession(session)
+      if (result) return result
+      if ((session.events || []).some(e => e.event_name === 'EXIT')) {
+        return { cancelled: true }
+      }
+    }
+  }
+  return { cancelled: true, timeout: true }
+}
+
 function register() {
   ipcMain.handle('link-card-hosted', async () => {
     try {
-      const client = getPlaidClient()
-      const res = await client.linkTokenCreate({
-        user: { client_user_id: 'fintrack-local-user' },
-        client_name: 'FinTrack',
-        products: ['transactions'],
-        transactions: { days_requested: 730 },
-        country_codes: ['US'],
-        language: 'en',
-        hosted_link: { url_lifetime_seconds: 900 },
-      })
-      const linkToken = res.data.link_token
-      await shell.openExternal(res.data.hosted_link_url)
-
-      hostedLinkAborted = false
-      const deadline = Date.now() + 15 * 60 * 1000
-      while (Date.now() < deadline) {
-        if (hostedLinkAborted) return { cancelled: true }
-        await new Promise(r => setTimeout(r, 3000))
-        const status = await client.linkTokenGet({ link_token: linkToken })
-        for (const session of status.data.link_sessions || []) {
+      return await runHostedLink(
+        { products: ['transactions'], transactions: { days_requested: 730 } },
+        async session => {
           const added = session.results?.item_add_results || []
-          if (added.length) {
-            return await exchangeAndStore(added[0].public_token, added[0].institution?.name)
-          }
-          if ((session.events || []).some(e => e.event_name === 'EXIT')) {
-            return { cancelled: true }
-          }
+          if (!added.length) return null
+          return exchangeAndStore(added[0].public_token, added[0].institution?.name)
         }
-      }
-      return { cancelled: true, timeout: true }
+      )
+    } catch (err) {
+      throw plaidError(err)
+    }
+  })
+
+  // Update mode: re-authenticate an existing item (ITEM_LOGIN_REQUIRED etc.)
+  // without unlinking, so its transactions and sync cursor survive.
+  ipcMain.handle('relink-card-hosted', async (_, itemId) => {
+    try {
+      const items = readJSON('plaid_items.json')
+      const item = items.find(i => i.item_id === itemId)
+      if (!item) throw new Error('Linked card not found')
+      const accessToken = decryptToken(item)
+
+      const result = await runHostedLink(
+        { access_token: accessToken },
+        // Update mode adds no item, so success only shows up in the events
+        async session => {
+          const ok = (session.events || []).some(
+            e => e.event_name === 'SUCCESS' || e.event_name === 'HANDOFF'
+          )
+          return ok ? { success: true } : null
+        }
+      )
+      if (result.cancelled) return result
+
+      // Confirm the item is healthy again and refresh its account list
+      const client = getPlaidClient()
+      const accountsRes = await client.accountsGet({ access_token: accessToken })
+      item.accounts = accountsRes.data.accounts.map(a => ({
+        id: a.account_id,
+        name: a.name,
+        mask: a.mask,
+        type: a.subtype || a.type,
+      }))
+      item.status = 'ok'
+      delete item.error
+      writeJSON('plaid_items.json', items)
+      return { success: true, institution: item.institution }
     } catch (err) {
       throw plaidError(err)
     }

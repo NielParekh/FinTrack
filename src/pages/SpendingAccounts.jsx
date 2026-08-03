@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  linkCardHosted, cancelHostedLink, getSpendingAccounts,
+  linkCardHosted, relinkCardHosted, cancelHostedLink, getSpendingAccounts,
   removeSpendingAccount, syncTransactions,
 } from '../lib/api'
 
@@ -49,6 +49,32 @@ export default function SpendingAccounts() {
   function handleCancelLink() {
     cancelHostedLink()
     setSyncMsg('')
+  }
+
+  async function handleRelink(itemId, institution) {
+    setError('')
+    setBusy(true)
+    setLinking(true)
+    setSyncMsg(`Re-authenticate ${institution} in your browser — transactions and history are kept.`)
+    try {
+      const res = await relinkCardHosted(itemId)
+      setLinking(false)
+      if (res.cancelled) {
+        setSyncMsg(res.timeout ? 'Re-linking timed out. Try again.' : '')
+      } else {
+        await load()
+        setSyncMsg(`${institution} reconnected. Syncing…`)
+        const sync = await syncTransactions()
+        setSyncMsg(`${institution} reconnected. Synced ${sync.added} new transactions.`)
+        await load()
+      }
+    } catch (err) {
+      setError(err.message)
+      setSyncMsg('')
+    } finally {
+      setLinking(false)
+      setBusy(false)
+    }
   }
 
   async function handleSync() {
@@ -118,6 +144,15 @@ export default function SpendingAccounts() {
                     </td>
                     <td>
                       <div className="etf-holding-actions visible">
+                        {item.status !== 'ok' && (
+                          <button
+                            className="btn btn-secondary btn-relink"
+                            disabled={busy}
+                            onClick={() => handleRelink(item.item_id, item.institution)}
+                          >
+                            Re-link
+                          </button>
+                        )}
                         <button className="icon-btn danger" title="Unlink" onClick={() => handleRemove(item.item_id, item.institution)}>🗑️</button>
                       </div>
                     </td>

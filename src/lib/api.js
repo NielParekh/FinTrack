@@ -13,6 +13,7 @@ export const addHysaTransaction      = (data)   => window.electronAPI.addHysaTra
 export const deleteHysaTransaction   = (id)     => window.electronAPI.deleteHysaTransaction(id)
 export const updateHysaBalance       = (value)  => window.electronAPI.updateHysaBalance(value)
 export const linkCardHosted          = ()       => window.electronAPI.linkCardHosted()
+export const relinkCardHosted        = (id)     => window.electronAPI.relinkCardHosted(id)
 export const cancelHostedLink        = ()       => window.electronAPI.cancelHostedLink()
 export const getSpendingAccounts     = ()       => window.electronAPI.getSpendingAccounts()
 export const removeSpendingAccount   = (id)     => window.electronAPI.removeSpendingAccount(id)
