@@ -5,12 +5,14 @@ const { ensureDataDir } = require('./lib/data')
 const investments = require('./handlers/investments')
 const hysa = require('./handlers/hysa')
 const spending = require('./handlers/spending')
+const brokerage = require('./handlers/brokerage')
 const isDev = !app.isPackaged
 
 // Register all IPC handlers
 investments.register()
 hysa.register()
 spending.register()
+brokerage.register()
 
 function createWindow() {
   const win = new BrowserWindow({

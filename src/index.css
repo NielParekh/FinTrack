@@ -288,6 +288,7 @@ html, body {
 }
 .chart-filters-note { margin-left: auto; font-size: 0.75rem; }
 .btn-relink { padding: 4px 10px; font-size: 0.8125rem; }
+.brokerage-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; }
 .tx-pending { opacity: 0.55; }
 .month-select, .category-select {
   background: var(--secondary);
@@ -334,7 +335,7 @@ html, body {
 
 .cost-basis-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 16px;
 }
 

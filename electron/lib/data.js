@@ -40,6 +40,7 @@ function ensureDataDir() {
     'investment_history.json': '[]',
     'hysa_transactions.json': '[]',
     'plaid_items.json': '[]',
+    'plaid_holdings.json': JSON.stringify({ holdings: [], synced_at: null }, null, 2),
     'spending_transactions.json': '[]',
     'spending_categories.json': JSON.stringify({
       categories: ['Groceries', 'Dining', 'Transport', 'Travel', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Fitness', 'Personal', 'Fees', 'Refunds', 'Payments', 'Other'],
@@ -77,7 +78,11 @@ function getNextId(items) {
 }
 
 function historySnapshot(data) {
-  const etfTotal = Object.values(data.etfs || {}).reduce((s, v) => s + v, 0)
+  // Prefer synced brokerage holdings over the manual etfs object
+  const synced = (readJSON('plaid_holdings.json').holdings || []).filter(h => h.type === 'etf')
+  const etfTotal = synced.length
+    ? synced.reduce((s, h) => s + (h.value || 0), 0)
+    : Object.values(data.etfs || {}).reduce((s, v) => s + v, 0)
   return {
     date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
     bank_balance: data.bank_balance || 0,

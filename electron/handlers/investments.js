@@ -2,19 +2,34 @@ const { ipcMain } = require('electron')
 const { readJSON, writeJSON, appendSnapshot } = require('../lib/data')
 const { fetchPrices } = require('../lib/prices')
 
+// Synced brokerage holdings are the source of truth for ETFs once present;
+// the manual etfs object is the fallback until a brokerage is linked.
+function syncedEtfs() {
+  const stored = readJSON('plaid_holdings.json')
+  const etfs = (stored.holdings || []).filter(h => h.type === 'etf')
+  if (!etfs.length) return null
+  return {
+    total: etfs.reduce((s, h) => s + (h.value || 0), 0),
+    costBasis: etfs.reduce((s, h) => s + (h.cost_basis || 0), 0),
+    list: etfs.map(h => ({ ticker: h.ticker, value: h.value || 0 })),
+  }
+}
+
 function formatInvestmentData(data) {
   const etfs = data.etfs || {}
   const stocks = data.stocks || {}
-  const etfTotal = Object.values(etfs).reduce((s, v) => s + v, 0)
+  const synced = syncedEtfs()
+  const etfTotal = synced ? synced.total : Object.values(etfs).reduce((s, v) => s + v, 0)
   return {
     bank_balance: data.bank_balance || 0,
     hysa_balance: data.hysa_balance || 0,
     stock_value: data.stock_value || 0,
     stock_cost_basis: data.stock_cost_basis || 0,
     hysa_cost_basis: data.hysa_cost_basis || 0,
-    etf_cost_basis: data.etf_cost_basis || 0,
+    etf_cost_basis: synced && synced.costBasis > 0 ? synced.costBasis : (data.etf_cost_basis || 0),
     etf_total: etfTotal,
-    etfs: Object.entries(etfs).map(([ticker, value]) => ({ ticker, value })),
+    etf_synced: !!synced,
+    etfs: synced ? synced.list : Object.entries(etfs).map(([ticker, value]) => ({ ticker, value })),
     stocks: Object.entries(stocks).map(([ticker, val]) => ({
       ticker,
       shares: typeof val === 'object' ? val.shares : val,

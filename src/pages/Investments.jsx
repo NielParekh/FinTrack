@@ -220,12 +220,16 @@ export default function Investments() {
           value={inv.hysa_cost_basis}
           onSave={v => updateInvestments({ hysa_cost_basis: v }).then(load)}
         />
-        <CostBasisCard
-          title="ETF Cost Basis"
-          description="Total amount paid for all ETF positions ($)"
-          value={inv.etf_cost_basis}
-          onSave={v => updateInvestments({ etf_cost_basis: v }).then(load)}
-        />
+        {/* ETF cost basis comes from the linked brokerage; the manual card is
+            only for when nothing is synced. */}
+        {!inv.etf_synced && (
+          <CostBasisCard
+            title="ETF Cost Basis"
+            description="Total amount paid for all ETF positions ($)"
+            value={inv.etf_cost_basis}
+            onSave={v => updateInvestments({ etf_cost_basis: v }).then(load)}
+          />
+        )}
       </div>
     </>
   )
