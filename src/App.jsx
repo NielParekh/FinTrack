@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
+import Dashboard from './pages/Dashboard'
 import Investments from './pages/Investments'
 import Bank from './pages/Bank'
 import Stocks from './pages/Stocks'
@@ -12,7 +13,7 @@ import SpendingCharts from './pages/SpendingCharts'
 import SpendingAccounts from './pages/SpendingAccounts'
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('investments')
+  const [activeTab, setActiveTab] = useState('dashboard')
   const [theme, setTheme] = useState(() => localStorage.getItem('fintrack-theme') || 'light')
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export default function App() {
 
   function renderPage() {
     switch (activeTab) {
+      case 'dashboard':      return <Dashboard setActiveTab={setActiveTab} />
       case 'investments':    return <Investments />
       case 'bank':           return <Bank />
       case 'stocks':         return <Stocks />

@@ -181,8 +181,8 @@ html, body {
 .summary-grid.three-col  { grid-template-columns: repeat(3, 1fr); }
 .summary-grid.four-col   { grid-template-columns: repeat(4, 1fr); }
 
-.gain-positive { color: #22c55e; }
-.gain-negative { color: #ef4444; }
+.gain-positive, .gain-pos { color: #22c55e; }
+.gain-negative, .gain-neg { color: #ef4444; }
 
 .stat-card {
   background: var(--card);
@@ -289,6 +289,63 @@ html, body {
 .chart-filters-note { margin-left: auto; font-size: 0.75rem; }
 .btn-relink { padding: 4px 10px; font-size: 0.8125rem; }
 .brokerage-chip { display: inline-flex; align-items: center; gap: 4px; margin-right: 12px; }
+
+/* ── Dashboard ────────────────────────────────────────── */
+.hero-figure {
+  font-size: 2.75rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.hero-delta { font-size: 0.9375rem; font-weight: 600; margin-top: 6px; }
+.hero-delta .muted-cell { font-weight: 400; }
+.hero-chart { height: 220px; margin-top: 18px; }
+
+.range-toggle { display: flex; gap: 2px; }
+.range-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--muted-foreground);
+  border-radius: var(--radius);
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+.range-btn:hover { background: var(--muted); }
+.range-btn.active {
+  background: var(--secondary);
+  border-color: var(--border);
+  color: var(--foreground);
+}
+
+.stat-card--link {
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease;
+}
+.stat-card--link:hover { border-color: var(--muted-foreground); }
+.stat-sub { font-size: 0.75rem; margin-top: 4px; }
+
+.dash-split {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 16px;
+}
+
+.conn-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.conn-item { display: flex; align-items: center; gap: 8px; font-size: 0.875rem; }
+.conn-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.conn-dot.ok  { background: var(--income); }
+.conn-dot.bad { background: var(--expense); }
+.conn-name { font-weight: 500; }
+.conn-time { margin-left: auto; font-size: 0.75rem; }
+
+@media (max-width: 900px) {
+  .dash-split { grid-template-columns: 1fr; }
+}
 .tx-pending { opacity: 0.55; }
 .month-select, .category-select {
   background: var(--secondary);

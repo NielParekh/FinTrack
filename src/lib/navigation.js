@@ -1,5 +1,12 @@
 export const NAV_SECTIONS = [
   {
+    id: 'overview',
+    label: 'Overview',
+    items: [
+      { id: 'dashboard', label: 'Dashboard' },
+    ],
+  },
+  {
     id: 'investing',
     label: 'Investing',
     items: [
