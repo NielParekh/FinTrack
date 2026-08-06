@@ -8,11 +8,16 @@ Built with Electron, React, and Chart.js.
 
 ## Features
 
+### Dashboard
+- Net worth headline with a 1M / 6M / 1Y / All range toggle driving the trend chart
+- Stat tiles for portfolio gain, this month's spend vs. last month, cash, and invested — each links to its detail page
+- Recent purchases and linked-card health at a glance
+
 ### Investment Portfolio
 - **Overview** — net worth, total invested, total gain/loss, and asset allocation doughnut chart
 - **Bank** — track your checking/savings balance
 - **Stocks** — add positions by ticker + share count with live prices fetched from Yahoo Finance; real-time P&L; record sales to track realized gains
-- **ETFs** — track ETF positions by ticker + current dollar value with P&L
+- **ETFs** — sync holdings automatically from a linked brokerage via Plaid Investments (shares, cost basis, value, and per-position P&L), or enter them by hand if you'd rather
 - **HYSA** — log deposits and withdrawals to track principal separately from interest earned; update current value to calculate interest return
 
 ### Portfolio Stats
@@ -23,8 +28,10 @@ Built with Electron, React, and Chart.js.
 ### Credit Card Spending (optional, via Plaid)
 - Link credit cards once through [Plaid](https://plaid.com) — transactions sync automatically, no manual entry
 - Auto-categorization with per-merchant overrides ("always categorize Starbucks as Dining")
-- Monthly spend dashboard with category breakdown chart; card payments excluded from spend totals
-- Access tokens encrypted at rest with the macOS Keychain and never leave your machine
+- Monthly spend overview with category breakdown; card payments and refunds excluded from spend totals
+- **Charts** tab with spend-by-month, by-category, and top-merchant views, filterable by month, card, and category
+- Re-link a card that needs re-authentication without losing its transaction history
+- Access tokens encrypted at rest with the OS keychain and never leave your machine
 - Entirely optional — the rest of the app works without any API keys
 
 ### General
@@ -37,7 +44,7 @@ Built with Electron, React, and Chart.js.
 
 ### 1. Prerequisites
 
-- macOS
+- macOS, Windows, or Linux
 - [Node.js](https://nodejs.org/) v16 or newer (check with `node --version`)
 
 ### 2. Install and run
@@ -60,6 +67,8 @@ That's it for investment tracking — no configuration needed. Continue below on
 1. Sign up at [dashboard.plaid.com](https://dashboard.plaid.com) (free, no credit card required)
 2. Go to **Developers → Keys** and copy your `client_id` and **Sandbox** secret
 
+New accounts get a free **Trial plan** — real production data, up to 10 linked connections, with Transactions and Investments both included. Sandbox is still worth using first to see the flow with fake data.
+
 **b. Create your `.env` file**
 
 ```bash
@@ -81,27 +90,26 @@ PLAID_ENV=sandbox
 
 1. Restart the app (`npm run dev`)
 2. Go to **Spending → Linked Cards → + Link a card**
-3. Pick any bank and log in with Plaid's test credentials:
-   - username: `user_good`
-   - password: `pass_good`
-   - 2FA code (if asked): `1234`
+3. Log in with Plaid's test credentials: `user_good` / `pass_good` (2FA code `1234`)
 4. Fake transactions sync automatically — check **Spending → Overview**
 
-**d. Go live with real cards**
+**d. Go live with real accounts**
 
-1. In the Plaid dashboard, apply for **Production** access (describe it as a personal finance app for your own use)
-2. Once approved, update `.env` with your Production secret and set `PLAID_ENV=production`
-3. Restart the app and link your real cards — your bank credentials are entered in Plaid's own secure widget and are never seen or stored by FinTrack
+Swap in your Production secret, set `PLAID_ENV=production`, and restart. Link cards under **Spending → Linked Cards**, and your brokerage under **Investments → ETFs**.
 
-> **Cost:** Plaid's free tier covers up to 10 linked accounts — plenty for personal use.
+Linking opens in your default browser (Plaid Hosted Link) — banks like Chase block Electron's embedded window. Your credentials go to Plaid directly and are never seen or stored by FinTrack.
 
-### Build a macOS installer
+> If a card later needs re-authentication, use **Re-link** rather than unlinking. It keeps your transaction history, and unlink + link again permanently consumes one of your 10 trial connections.
+
+### Build an installer
 
 ```bash
-npm run dist
+npm run dist        # macOS .dmg
+npm run dist:win    # Windows .exe
+npm run dist:linux  # Linux AppImage
 ```
 
-Outputs a `.dmg` to the `dist/` folder.
+Each target must be built on its own platform. Packaged builds read `.env` from the app's user-data folder (the error message names the exact path).
 
 ---
 
@@ -112,11 +120,12 @@ FinTrack/
 ├── electron/
 │   ├── main.js            # App entry, window creation
 │   ├── preload.js         # Context bridge (IPC surface)
-│   ├── handlers/          # IPC handlers: investments, hysa, spending
-│   └── lib/               # data.js (JSON storage), prices.js (Yahoo), plaid.js
+│   ├── handlers/          # IPC handlers: investments, hysa, spending, brokerage
+│   └── lib/               # data.js (JSON storage), prices.js (Yahoo),
+│                          # plaid.js (client), plaidLink.js (Hosted Link flow)
 ├── src/
-│   ├── pages/             # Investments, Bank, Stocks, HYSA, ETFs, PortfolioStats,
-│   │                      # Spending, SpendingAccounts
+│   ├── pages/             # Dashboard, Investments, Bank, Stocks, HYSA, ETFs,
+│   │                      # PortfolioStats, Spending, SpendingCharts, SpendingAccounts
 │   ├── components/        # Sidebar, Topbar
 │   └── lib/               # api.js (IPC calls), navigation.js, utils.js
 ├── data/                  # Local JSON storage (gitignored)
@@ -134,8 +143,8 @@ FinTrack/
 | [React 18](https://react.dev/) | UI components |
 | [Vite 5](https://vitejs.dev/) | Dev server and bundler |
 | [Chart.js 4](https://www.chartjs.org/) | Data visualization |
-| [Plaid](https://plaid.com/docs/) | Bank/card transaction sync (optional) |
-| [Electron Builder](https://www.electron.build/) | macOS packaging |
+| [Plaid](https://plaid.com/docs/) | Card transactions and brokerage holdings (optional) |
+| [Electron Builder](https://www.electron.build/) | macOS / Windows / Linux packaging |
 
 ---
 
@@ -148,11 +157,14 @@ All data lives in `./data/` as plain JSON files:
 | `investments.json` | Balances, positions, cost bases |
 | `investment_history.json` | Daily net worth snapshots |
 | `hysa_transactions.json` | HYSA deposit/withdrawal history |
-| `plaid_items.json` | Linked card metadata + encrypted access tokens |
+| `plaid_items.json` | Linked card/brokerage metadata + encrypted access tokens |
+| `plaid_holdings.json` | Synced brokerage holdings |
 | `spending_transactions.json` | Synced credit card transactions |
 | `spending_categories.json` | Category list and merchant → category rules |
 
-The `data/` directory is gitignored — your financial data never leaves your machine. Plaid access tokens are encrypted with the macOS Keychain before being written to disk.
+The `data/` directory is gitignored — your financial data never leaves your machine. Plaid access tokens are encrypted with the OS keychain (macOS Keychain, Windows DPAPI, libsecret on Linux) before being written to disk.
+
+In dev, files live in `./data/`. In a packaged build they move to the app's user-data directory.
 
 ---
 
