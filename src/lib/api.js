@@ -12,6 +12,8 @@ export const getHysaTransactions     = ()       => window.electronAPI.getHysaTra
 export const addHysaTransaction      = (data)   => window.electronAPI.addHysaTransaction(data)
 export const deleteHysaTransaction   = (id)     => window.electronAPI.deleteHysaTransaction(id)
 export const updateHysaBalance       = (value)  => window.electronAPI.updateHysaBalance(value)
+export const getHysaSource           = ()       => window.electronAPI.getHysaSource()
+export const syncHysaBalance         = ()       => window.electronAPI.syncHysaBalance()
 export const linkBrokerageHosted     = ()       => window.electronAPI.linkBrokerageHosted()
 export const getBrokerageAccounts    = ()       => window.electronAPI.getBrokerageAccounts()
 export const syncHoldings            = ()       => window.electronAPI.syncHoldings()

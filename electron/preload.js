@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   addHysaTransaction:      (data)    => ipcRenderer.invoke('add-hysa-transaction', data),
   deleteHysaTransaction:   (id)      => ipcRenderer.invoke('delete-hysa-transaction', id),
   updateHysaBalance:       (value)   => ipcRenderer.invoke('update-hysa-balance', value),
+  getHysaSource:           ()        => ipcRenderer.invoke('get-hysa-source'),
+  syncHysaBalance:         ()        => ipcRenderer.invoke('sync-hysa-balance'),
   linkBrokerageHosted:     ()        => ipcRenderer.invoke('link-brokerage-hosted'),
   getBrokerageAccounts:    ()        => ipcRenderer.invoke('get-brokerage-accounts'),
   syncHoldings:            ()        => ipcRenderer.invoke('sync-holdings'),

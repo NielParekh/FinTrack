@@ -1,11 +1,19 @@
 import { useState, useEffect } from 'react'
-import { getInvestments, getHysaTransactions, addHysaTransaction, deleteHysaTransaction, updateHysaBalance } from '../lib/api'
+import {
+  getInvestments, getHysaTransactions, addHysaTransaction, deleteHysaTransaction,
+  getHysaSource, syncHysaBalance,
+} from '../lib/api'
 import { fmt, today } from '../lib/utils'
 
 export default function HYSA() {
   const [balance, setBalance] = useState(0)
   const [principal, setPrincipal] = useState(0)
   const [transactions, setTransactions] = useState([])
+  const [source, setSource] = useState(null)
+  const [syncedAt, setSyncedAt] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [status, setStatus] = useState('')
+  const [error, setError] = useState('')
 
   // deposit form
   const [amount, setAmount] = useState('')
@@ -17,17 +25,39 @@ export default function HYSA() {
   const [wDate, setWDate] = useState(today())
   const [wNote, setWNote] = useState('')
 
-  // current value update
-  const [newBalance, setNewBalance] = useState('')
-
   async function load() {
-    const [inv, txs] = await Promise.all([getInvestments(), getHysaTransactions()])
+    const [inv, txs, src] = await Promise.all([
+      getInvestments(), getHysaTransactions(), getHysaSource(),
+    ])
     setBalance(inv.hysa_balance || 0)
     setPrincipal(inv.hysa_cost_basis || 0)
     setTransactions(txs)
+    setSource(src)
+    setSyncedAt(inv.hysa_synced_at || null)
   }
 
   useEffect(() => { load() }, [])
+
+  async function handleSync() {
+    setError('')
+    setBusy(true)
+    setStatus('Syncing…')
+    try {
+      const res = await syncHysaBalance()
+      await load()
+      const delta = res.hysa_balance - res.previous
+      setStatus(
+        delta === 0
+          ? `Balance unchanged — $${fmt(res.hysa_balance)}.`
+          : `Updated to $${fmt(res.hysa_balance)} (${delta > 0 ? '+' : '−'}$${fmt(Math.abs(delta))}).`
+      )
+    } catch (err) {
+      setError(err.message)
+      setStatus('')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function handleDeposit(e) {
     e.preventDefault()
@@ -46,14 +76,6 @@ export default function HYSA() {
     setWAmount('')
     setWNote('')
     setWDate(today())
-    load()
-  }
-
-  async function handleUpdateBalance(e) {
-    e.preventDefault()
-    if (newBalance === '') return
-    await updateHysaBalance(parseFloat(newBalance))
-    setNewBalance('')
     load()
   }
 
@@ -140,27 +162,35 @@ export default function HYSA() {
           </div>
 
           <div className="card">
-            <div className="card-header"><h2>Update Current Value</h2></div>
+            <div className="card-header">
+              <h2>Update Current Value</h2>
+              {syncedAt && (
+                <span className="muted-cell">Synced {new Date(syncedAt).toLocaleString()}</span>
+              )}
+            </div>
             <div className="card-body">
-              <form onSubmit={handleUpdateBalance}>
-                <div className="input-group">
-                  <label>Total Account Value ($)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    placeholder={fmt(balance)}
-                    value={newBalance}
-                    onChange={e => setNewBalance(e.target.value)}
-                    required
-                  />
+              {source ? (
+                <>
+                  <button
+                    className="btn btn-primary full-width"
+                    onClick={handleSync}
+                    disabled={busy}
+                  >
+                    ⟳ Sync from {source.institution}
+                  </button>
                   <div className="label-hint" style={{ marginTop: '4px' }}>
-                    Set this to the current balance shown in your bank account (principal + interest).
+                    Pulls the balance of {source.account}
+                    {source.mask && ` ····${source.mask}`}.
                   </div>
-                </div>
-                <button type="submit" className="btn btn-primary full-width">
-                  Update Value
-                </button>
-              </form>
+                </>
+              ) : (
+                <p className="etf-empty">
+                  Link a brokerage with a cash account to sync your balance.
+                </p>
+              )}
+
+              {error && <div className="error-banner" style={{ marginTop: '16px' }}>⚠️ {error}</div>}
+              {status && <p className="muted-cell sync-status">{status}</p>}
             </div>
           </div>
         </div>
