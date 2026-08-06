@@ -7,7 +7,11 @@ function getPlaidClient() {
   if (client) return client
   const { PLAID_CLIENT_ID, PLAID_SECRET, PLAID_ENV } = process.env
   if (!PLAID_CLIENT_ID || !PLAID_SECRET) {
-    throw new Error('Plaid keys missing. Add PLAID_CLIENT_ID and PLAID_SECRET to the .env file.')
+    const { app } = require('electron')
+    const where = app.isPackaged
+      ? `a .env file in ${app.getPath('userData')}`
+      : 'the .env file at the project root'
+    throw new Error(`Plaid keys missing. Add PLAID_CLIENT_ID, PLAID_SECRET, and PLAID_ENV to ${where}.`)
   }
   const config = new Configuration({
     basePath: PlaidEnvironments[PLAID_ENV || 'sandbox'],

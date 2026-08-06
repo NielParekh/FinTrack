@@ -1,6 +1,23 @@
 const { app, BrowserWindow } = require('electron')
 const path = require('path')
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
+const fs = require('fs')
+
+// In dev the .env sits at the repo root. Packaged, __dirname is inside the
+// read-only asar, so look beside the app's resources and in userData — the
+// latter is the only writable spot on every platform.
+const envCandidates = app.isPackaged
+  ? [
+      path.join(process.resourcesPath, '.env'),
+      path.join(app.getPath('userData'), '.env'),
+    ]
+  : [path.join(__dirname, '..', '.env')]
+for (const candidate of envCandidates) {
+  if (fs.existsSync(candidate)) {
+    require('dotenv').config({ path: candidate })
+    break
+  }
+}
+
 const { ensureDataDir } = require('./lib/data')
 const investments = require('./handlers/investments')
 const hysa = require('./handlers/hysa')

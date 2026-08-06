@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build",
-    "dist": "vite build && electron-builder --mac"
+    "dist": "vite build && electron-builder --mac",
+    "dist:win": "vite build && electron-builder --win",
+    "dist:linux": "vite build && electron-builder --linux"
   },
   "dependencies": {
     "chart.js": "^4.4.0",
@@ -29,6 +31,13 @@
     "productName": "FinTrack",
     "mac": {
       "target": "dmg"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Office"
     },
     "files": [
       "dist/**",
