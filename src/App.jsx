@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { usePressFeedback } from './lib/usePress'
-import { enter } from './lib/motion'
+import { enterStaggered } from './lib/motion'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import Dashboard from './pages/Dashboard'
@@ -27,9 +27,12 @@ export default function App() {
     localStorage.setItem('fintrack-theme', theme)
   }, [theme])
 
-  // Each page arrives along the same short vertical path it would leave by
+  // Cards arrive in sequence down the page, each along the same short
+  // vertical path it would leave by. Waits a frame so the new page's
+  // children are mounted before they're animated.
   useEffect(() => {
-    if (contentRef.current) enter(contentRef.current, { y: 6 })
+    const id = requestAnimationFrame(() => enterStaggered(contentRef.current))
+    return () => cancelAnimationFrame(id)
   }, [activeTab])
 
   const toggleTheme = () => setTheme(t => t === 'light' ? 'dark' : 'light')
