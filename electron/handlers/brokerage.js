@@ -1,4 +1,5 @@
 const { ipcMain } = require('electron')
+const log = require('../lib/logger')
 const { readJSON, writeJSON } = require('../lib/data')
 const { getPlaidClient, decryptToken } = require('../lib/plaid')
 const { runHostedLink, exchangeAndStore, plaidError } = require('../lib/plaidLink')
@@ -77,9 +78,11 @@ function register() {
       } catch (err) {
         item.status = 'error'
         item.error = err?.response?.data?.error_code || err.message
+        log.error(`Holdings sync failed for ${item.institution}:`, item.error)
         errors.push(`${item.institution}: ${item.error}`)
       }
     }
+    log.info(`Holdings sync: ${all.length} holdings, ${errors.length} errors`)
 
     writeJSON('plaid_items.json', items)
     // Only overwrite stored holdings if at least one item synced cleanly,

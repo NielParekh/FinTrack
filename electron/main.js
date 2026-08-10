@@ -18,12 +18,15 @@ for (const candidate of envCandidates) {
   }
 }
 
+const log = require('./lib/logger')
 const { ensureDataDir } = require('./lib/data')
 const investments = require('./handlers/investments')
 const hysa = require('./handlers/hysa')
 const spending = require('./handlers/spending')
 const brokerage = require('./handlers/brokerage')
 const isDev = !app.isPackaged
+
+log.info(`FinTrack ${app.getVersion()} starting (${isDev ? 'dev' : 'packaged'})`)
 
 // Register all IPC handlers
 investments.register()

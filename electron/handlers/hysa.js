@@ -1,4 +1,5 @@
 const { ipcMain } = require('electron')
+const log = require('../lib/logger')
 const { readJSON, writeJSON, getNextId, appendSnapshot } = require('../lib/data')
 const { getPlaidClient, decryptToken } = require('../lib/plaid')
 
@@ -111,6 +112,7 @@ function register() {
         lastError = err?.response?.data?.error_message || err.message
         item.status = 'error'
         item.error = err?.response?.data?.error_code || err.message
+        log.error(`HYSA balance fetch failed for ${item.institution}:`, item.error)
         continue
       }
 
@@ -137,6 +139,10 @@ function register() {
       delete item.error
       writeJSON('plaid_items.json', items)
 
+      log.info(
+        `HYSA balance synced from ${item.institution}: ` +
+        `${previous.toFixed(2)} -> ${balance.toFixed(2)}`
+      )
       return {
         hysa_balance: balance,
         previous,
