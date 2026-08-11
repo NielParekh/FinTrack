@@ -13,6 +13,7 @@ import PortfolioStats from './pages/PortfolioStats'
 import Spending from './pages/Spending'
 import SpendingCharts from './pages/SpendingCharts'
 import SpendingAccounts from './pages/SpendingAccounts'
+import Data from './pages/Data'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
@@ -49,6 +50,7 @@ export default function App() {
       case 'spending':          return <Spending />
       case 'spending-charts':   return <SpendingCharts />
       case 'spending-accounts': return <SpendingAccounts />
+      case 'data':              return <Data />
       default:               return null
     }
   }

@@ -105,4 +105,4 @@ function appendSnapshot(data) {
   writeJSON('investment_history.json', history)
 }
 
-module.exports = { ensureDataDir, readJSON, writeJSON, getNextId, appendSnapshot }
+module.exports = { ensureDataDir, getDataDir, readJSON, writeJSON, getNextId, appendSnapshot }

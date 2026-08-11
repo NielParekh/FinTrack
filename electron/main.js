@@ -24,6 +24,7 @@ const investments = require('./handlers/investments')
 const hysa = require('./handlers/hysa')
 const spending = require('./handlers/spending')
 const brokerage = require('./handlers/brokerage')
+const backup = require('./handlers/backup')
 const isDev = !app.isPackaged
 
 log.info(`FinTrack ${app.getVersion()} starting (${isDev ? 'dev' : 'packaged'})`)
@@ -33,6 +34,7 @@ investments.register()
 hysa.register()
 spending.register()
 brokerage.register()
+backup.register()
 
 function createWindow() {
   const win = new BrowserWindow({

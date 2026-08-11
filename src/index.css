@@ -1196,3 +1196,20 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
   .card, .stat-card { border-width: 1px; }
   .sidebar, .topbar { background: var(--card); backdrop-filter: none; }
 }
+
+/* ── Backup & restore ───────────────────────────────────── */
+.restore-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--secondary);
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+}
+
+.restore-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}

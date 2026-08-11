@@ -27,6 +27,13 @@ export const NAV_SECTIONS = [
       { id: 'spending-accounts', label: 'Linked Cards' },
     ],
   },
+  {
+    id: 'settings',
+    label: 'Settings',
+    items: [
+      { id: 'data', label: 'Backup & Restore' },
+    ],
+  },
 ]
 
 export const NAV_ITEMS = NAV_SECTIONS.flatMap(s => s.items)
