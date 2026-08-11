@@ -18,7 +18,7 @@ Built with Electron, React, and Chart.js.
 - **Bank** — track your checking/savings balance
 - **Stocks** — add positions by ticker + share count with live prices fetched from Yahoo Finance; real-time P&L; record sales to track realized gains
 - **ETFs** — sync holdings automatically from a linked brokerage via Plaid Investments (shares, cost basis, value, and per-position P&L), or enter them by hand if you'd rather
-- **HYSA** — log deposits and withdrawals to track principal separately from interest earned; update current value to calculate interest return
+- **HYSA** — sync your balance straight from a linked cash account via Plaid; log deposits and withdrawals to track principal separately, so interest earned is the difference between the two
 
 ### Portfolio Stats
 - Stacked area chart showing net worth composition over time (Bank, HYSA, Stocks, ETFs)
@@ -33,6 +33,11 @@ Built with Electron, React, and Chart.js.
 - Re-link a card that needs re-authentication without losing its transaction history
 - Access tokens encrypted at rest with the OS keychain and never leave your machine
 - Entirely optional — the rest of the app works without any API keys
+
+### Backup & Restore
+- Save every data file into a single JSON backup you can keep off this machine
+- Restore validates the file before writing anything, and snapshots your current data first so a mistaken restore can be undone
+- Backups from another Mac are detected: Plaid tokens are encrypted to the machine that wrote them, so the app offers to restore everything except the bank connections
 
 ### General
 - Light and dark mode (persisted across sessions)
@@ -95,7 +100,7 @@ PLAID_ENV=sandbox
 
 **d. Go live with real accounts**
 
-Swap in your Production secret, set `PLAID_ENV=production`, and restart. Link cards under **Spending → Linked Cards**, and your brokerage under **Investments → ETFs**.
+Swap in your Production secret, set `PLAID_ENV=production`, and restart. Link cards under **Spending → Linked Cards**, and your brokerage under **Investments → ETFs**. A brokerage with a cash account also feeds **Investments → HYSA** — the same connection covers both, so it costs no extra link.
 
 Linking opens in your default browser (Plaid Hosted Link) — banks like Chase block Electron's embedded window. Your credentials go to Plaid directly and are never seen or stored by FinTrack.
 
@@ -120,14 +125,18 @@ FinTrack/
 ├── electron/
 │   ├── main.js            # App entry, window creation
 │   ├── preload.js         # Context bridge (IPC surface)
-│   ├── handlers/          # IPC handlers: investments, hysa, spending, brokerage
+│   ├── handlers/          # IPC handlers: investments, hysa, spending,
+│   │                      # brokerage, backup
 │   └── lib/               # data.js (JSON storage), prices.js (Yahoo),
-│                          # plaid.js (client), plaidLink.js (Hosted Link flow)
+│                          # plaid.js (client), plaidLink.js (Hosted Link
+│                          # flow), logger.js (file logging + redaction)
 ├── src/
 │   ├── pages/             # Dashboard, Investments, Bank, Stocks, HYSA, ETFs,
-│   │                      # PortfolioStats, Spending, SpendingCharts, SpendingAccounts
+│   │                      # PortfolioStats, Spending, SpendingCharts,
+│   │                      # SpendingAccounts, Data
 │   ├── components/        # Sidebar, Topbar
-│   └── lib/               # api.js (IPC calls), navigation.js, utils.js
+│   └── lib/               # api.js (IPC calls), navigation.js, utils.js,
+│                          # motion.js + usePress.js (spring interactions)
 ├── data/                  # Local JSON storage (gitignored)
 ├── .env.example           # Template for Plaid keys (copy to .env)
 └── index.html
@@ -143,7 +152,9 @@ FinTrack/
 | [React 18](https://react.dev/) | UI components |
 | [Vite 5](https://vitejs.dev/) | Dev server and bundler |
 | [Chart.js 4](https://www.chartjs.org/) | Data visualization |
+| [Motion](https://motion.dev/) | Spring-based interaction feedback |
 | [Plaid](https://plaid.com/docs/) | Card transactions and brokerage holdings (optional) |
+| [electron-log](https://github.com/megahertz/electron-log) | File logging for packaged builds |
 | [Electron Builder](https://www.electron.build/) | macOS / Windows / Linux packaging |
 
 ---
@@ -165,6 +176,20 @@ All data lives in `./data/` as plain JSON files:
 The `data/` directory is gitignored — your financial data never leaves your machine. Plaid access tokens are encrypted with the OS keychain (macOS Keychain, Windows DPAPI, libsecret on Linux) before being written to disk.
 
 In dev, files live in `./data/`. In a packaged build they move to the app's user-data directory.
+
+Because that folder is the only copy, **Settings → Backup & Restore** writes all of it into a single file you can keep elsewhere. Worth doing periodically — a backup on the same disk doesn't survive the failure it exists for.
+
+### Logs
+
+A packaged app has no terminal attached, so failures are written to a log file instead:
+
+| Platform | Path |
+|------|---------|
+| macOS | `~/Library/Logs/FinTrack/main.log` |
+| Windows | `%APPDATA%\FinTrack\logs\main.log` |
+| Linux | `~/.config/FinTrack/logs/main.log` |
+
+Rotates at 5 MB. Access tokens and API secrets are redacted before anything is written.
 
 ---
 
