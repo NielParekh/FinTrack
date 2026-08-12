@@ -1,4 +1,5 @@
 const { ipcMain } = require('electron')
+const log = require('../lib/logger')
 const { readJSON, writeJSON } = require('../lib/data')
 const { getPlaidClient, decryptToken } = require('../lib/plaid')
 const {
@@ -66,10 +67,13 @@ function register() {
         async session => {
           const added = session.results?.item_add_results || []
           if (!added.length) return null
-          return exchangeAndStore(added[0].public_token, added[0].institution?.name)
+          const institution = added[0].institution?.name
+          log.info(`Card linked: ${institution || 'unknown institution'}`)
+          return exchangeAndStore(added[0].public_token, institution)
         }
       )
     } catch (err) {
+      log.error('Card link failed:', err?.response?.data?.error_code || err.message)
       throw plaidError(err)
     }
   })
@@ -107,8 +111,10 @@ function register() {
       item.status = 'ok'
       delete item.error
       writeJSON('plaid_items.json', items)
+      log.info(`Card re-linked: ${item.institution}, ${item.accounts.length} accounts`)
       return { success: true, institution: item.institution }
     } catch (err) {
+      log.error('Card re-link failed:', err?.response?.data?.error_code || err.message)
       throw plaidError(err)
     }
   })
@@ -131,16 +137,23 @@ function register() {
     const idx = items.findIndex(i => i.item_id === itemId)
     if (idx === -1) throw new Error('Linked card not found')
 
+    const institution = items[idx].institution
     try {
       await getPlaidClient().itemRemove({ access_token: decryptToken(items[idx]) })
-    } catch {
+    } catch (err) {
       // Item may already be invalid on Plaid's side; still remove locally
+      log.warn(
+        `itemRemove failed for ${institution}, removing locally anyway:`,
+        err?.response?.data?.error_code || err.message
+      )
     }
     items.splice(idx, 1)
     writeJSON('plaid_items.json', items)
 
-    const txs = readJSON('spending_transactions.json').filter(t => t.item_id !== itemId)
+    const all = readJSON('spending_transactions.json')
+    const txs = all.filter(t => t.item_id !== itemId)
     writeJSON('spending_transactions.json', txs)
+    log.info(`Card removed: ${institution}, ${all.length - txs.length} transactions deleted`)
     return { success: true }
   })
 
@@ -149,7 +162,10 @@ function register() {
     const items = readJSON('plaid_items.json')
     // Brokerage items are linked for holdings only — no transactions product
     const cardItems = items.filter(i => i.kind !== 'brokerage')
-    if (!cardItems.length) return { added: 0, modified: 0, removed: 0 }
+    if (!cardItems.length) {
+      log.info('Transaction sync: no linked cards, nothing to do')
+      return { added: 0, modified: 0, removed: 0 }
+    }
 
     const cats = readJSON('spending_categories.json')
     const merchantMap = cats.merchant_map || {}
@@ -193,13 +209,19 @@ function register() {
         item.cursor = cursor
         item.status = 'ok'
         item.last_synced = new Date().toISOString()
+        delete item.error
       } catch (err) {
         // ITEM_LOGIN_REQUIRED etc. — mark for re-link, keep other items syncing
         item.status = 'error'
         item.error = err?.response?.data?.error_code || err.message
+        log.error(`Transaction sync failed for ${item.institution}:`, item.error)
         errors.push(`${item.institution}: ${item.error}`)
       }
     }
+    log.info(
+      `Transaction sync: ${cardItems.length} cards, +${added} added, ` +
+      `~${modified} modified, -${removed} removed, ${errors.length} errors`
+    )
 
     writeJSON('plaid_items.json', items)
     writeJSON('spending_transactions.json', [...byId.values()])
