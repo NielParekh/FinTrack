@@ -18,3 +18,17 @@ export function fmtPct(gain, basis) {
   const sign = pct >= 0 ? '+' : ''
   return `${sign}${pct.toFixed(2)}%`
 }
+
+// Card payments and refunds move money without spending it. Every spending
+// view has to agree on this, or the same month totals differently per page.
+export const NON_SPEND = new Set(['Payments', 'Refunds'])
+
+export function isPurchase(tx) {
+  return tx.amount > 0 && !NON_SPEND.has(tx.category)
+}
+
+// YYYY-MM, sliced off the ISO date rather than parsed, so a transaction
+// never lands in the wrong month via the local timezone.
+export function monthKey(date) {
+  return date.slice(0, 7)
+}

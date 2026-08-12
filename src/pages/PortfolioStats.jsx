@@ -7,26 +7,20 @@ import {
 import { Line } from 'react-chartjs-2'
 import { getInvestmentHistory } from '../lib/api'
 import { fmt } from '../lib/utils'
+import { useTheme } from '../lib/useTheme'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Legend, Filler)
 
+// The four components of net worth. `label` names the slice in the stacked
+// chart and the chips; `title` heads that component's own chart below.
 const LAYERS = [
-  { key: 'bank_balance', label: 'Bank',   color: '#16a34a' },
-  { key: 'hysa_balance', label: 'HYSA',   color: '#2563eb' },
-  { key: 'stock_value',  label: 'Stocks', color: '#9333ea' },
-  { key: 'etf_total',    label: 'ETFs',   color: '#d97706' },
+  { key: 'bank_balance', label: 'Bank',   title: 'Bank Balance', color: '#16a34a' },
+  { key: 'hysa_balance', label: 'HYSA',   title: 'HYSA Balance', color: '#2563eb' },
+  { key: 'stock_value',  label: 'Stocks', title: 'Stock Value',  color: '#9333ea' },
+  { key: 'etf_total',    label: 'ETFs',   title: 'ETF Total',    color: '#d97706' },
 ]
 
-const INDIVIDUAL_CHARTS = [
-  { key: 'bank_balance', label: 'Bank Balance',  color: '#16a34a' },
-  { key: 'hysa_balance', label: 'HYSA Balance',  color: '#2563eb' },
-  { key: 'stock_value',  label: 'Stock Value',   color: '#9333ea' },
-  { key: 'etf_total',    label: 'ETF Total',     color: '#d97706' },
-]
-
-function makeStackedChart(history, theme) {
-  const tickColor = theme === 'dark' ? '#a1a1aa' : '#71717a'
-  const gridColor = theme === 'dark' ? '#27272a' : '#e4e4e7'
+function makeStackedChart(history, colors) {
   return {
     data: {
       labels: history.map(h => h.date),
@@ -45,7 +39,7 @@ function makeStackedChart(history, theme) {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        legend: { display: true, position: 'top', labels: { color: tickColor, boxWidth: 12, padding: 16 } },
+        legend: { display: true, position: 'top', labels: { color: colors.tick, boxWidth: 12, padding: 16 } },
         tooltip: {
           callbacks: {
             label: ctx => ` ${ctx.dataset.label}: $${fmt(ctx.parsed.y)}`,
@@ -54,16 +48,14 @@ function makeStackedChart(history, theme) {
         },
       },
       scales: {
-        x: { stacked: true, ticks: { color: tickColor }, grid: { color: gridColor } },
-        y: { stacked: true, beginAtZero: true, ticks: { color: tickColor, callback: v => '$' + fmt(v) }, grid: { color: gridColor } },
+        x: { stacked: true, ticks: { color: colors.tick }, grid: { color: colors.grid } },
+        y: { stacked: true, beginAtZero: true, ticks: { color: colors.tick, callback: v => '$' + fmt(v) }, grid: { color: colors.grid } },
       },
     },
   }
 }
 
-function makeLineChart(history, key, color, theme) {
-  const tickColor = theme === 'dark' ? '#a1a1aa' : '#71717a'
-  const gridColor = theme === 'dark' ? '#27272a' : '#e4e4e7'
+function makeLineChart(history, key, color, colors) {
   return {
     data: {
       labels: history.map(h => h.date),
@@ -84,8 +76,8 @@ function makeLineChart(history, key, color, theme) {
         tooltip: { callbacks: { label: ctx => ` $${fmt(ctx.parsed.y)}` } },
       },
       scales: {
-        y: { beginAtZero: false, ticks: { color: tickColor, callback: v => '$' + fmt(v) }, grid: { color: gridColor } },
-        x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+        y: { beginAtZero: false, ticks: { color: colors.tick, callback: v => '$' + fmt(v) }, grid: { color: colors.grid } },
+        x: { ticks: { color: colors.tick }, grid: { color: colors.grid } },
       },
     },
   }
@@ -93,18 +85,10 @@ function makeLineChart(history, key, color, theme) {
 
 export default function PortfolioStats() {
   const [history, setHistory] = useState([])
-  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light')
+  const { colors } = useTheme()
 
   useEffect(() => {
     getInvestmentHistory().then(setHistory)
-  }, [])
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setTheme(document.documentElement.getAttribute('data-theme') || 'light')
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => observer.disconnect()
   }, [])
 
   if (history.length === 0) {
@@ -118,7 +102,7 @@ export default function PortfolioStats() {
   }
 
   const latest = history[history.length - 1]
-  const stacked = makeStackedChart(history, theme)
+  const stacked = makeStackedChart(history, colors)
 
   return (
     <div className="stats-container">
@@ -142,11 +126,11 @@ export default function PortfolioStats() {
         </div>
       </div>
 
-      {INDIVIDUAL_CHARTS.map(({ key, label, color }) => {
-        const { data, options } = makeLineChart(history, key, color, theme)
+      {LAYERS.map(({ key, title, color }) => {
+        const { data, options } = makeLineChart(history, key, color, colors)
         return (
           <div key={key} className="card chart-card">
-            <div className="card-header"><h2>{label}</h2></div>
+            <div className="card-header"><h2>{title}</h2></div>
             <div className="chart-container">
               <Line data={data} options={options} />
             </div>

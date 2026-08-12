@@ -31,8 +31,6 @@
   /* Materials — translucent layers that let content show through */
   --material-thick: rgba(252, 252, 253, 0.72);
   --material-regular: rgba(252, 252, 253, 0.6);
-  --material-thin: rgba(255, 255, 255, 0.55);
-  --material-border: rgba(255, 255, 255, 0.7);
   --material-edge: rgba(255, 255, 255, 0.9);
   --scrim: rgba(0, 0, 0, 0.28);
 
@@ -44,7 +42,6 @@
 
   /* Motion — response times, not durations. Springs settle on their own. */
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --ease-in: cubic-bezier(0.64, 0, 0.78, 0);
   --ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
   --response-fast: 120ms;
   --response: 240ms;
@@ -75,8 +72,6 @@
 
   --material-thick: rgba(30, 30, 32, 0.82);
   --material-regular: rgba(30, 30, 32, 0.68);
-  --material-thin: rgba(40, 40, 42, 0.55);
-  --material-border: rgba(255, 255, 255, 0.12);
   --material-edge: rgba(255, 255, 255, 0.16);
   --scrim: rgba(0, 0, 0, 0.5);
 
@@ -355,7 +350,6 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
 
 .stat-value.income  { color: var(--income); }
 .stat-value.expense { color: var(--expense); }
-.price-status       { font-size: 0.9375rem; }
 
 /* ── Cards ──────────────────────────────────────────────── */
 .card {
@@ -653,84 +647,7 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
 .cost-basis-actions { display: flex; gap: 8px; }
 .cost-basis-actions .btn { flex: 1; }
 
-/* ── Transaction list ───────────────────────────────────── */
-.transaction-list { list-style: none; }
-
-.transaction-item {
-  display: flex;
-  align-items: center;
-  padding: 13px 20px;
-  border-bottom: 1px solid var(--border);
-  transition: background var(--response-fast) var(--ease-out);
-}
-
-.transaction-item:last-child { border-bottom: none; }
-.transaction-item:hover { background: var(--muted); }
-
-.transaction-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.9375rem;
-  margin-right: 13px;
-  flex-shrink: 0;
-  background: var(--secondary);
-}
-
-.transaction-info { flex: 1; min-width: 0; }
-
-.transaction-description {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--foreground);
-  margin-bottom: 2px;
-  letter-spacing: -0.01em;
-}
-
-.transaction-meta {
-  font-size: 0.8125rem;
-  color: var(--muted-foreground);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.transaction-category {
-  display: inline-block;
-  padding: 1px 8px;
-  background: var(--secondary);
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  color: var(--muted-foreground);
-  font-weight: 500;
-}
-
-.transaction-amount {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  margin-left: 16px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-.amount-income  { color: var(--income); }
-.amount-expense { color: var(--expense); }
-
-.transaction-actions {
-  display: flex;
-  gap: 4px;
-  margin-left: 12px;
-  opacity: 0;
-  transition: opacity var(--response-fast) var(--ease-out);
-}
-
-.transaction-item:hover .transaction-actions { opacity: 1; }
-
-/* ── Empty & loading states ─────────────────────────────── */
+/* ── Empty state ────────────────────────────────────────── */
 .empty-state {
   text-align: center;
   padding: 48px 24px;
@@ -747,13 +664,6 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
 }
 
 .empty-state p { font-size: 0.875rem; }
-
-.loading {
-  text-align: center;
-  padding: 32px;
-  color: var(--muted-foreground);
-  font-size: 0.875rem;
-}
 
 /* ── Stats / charts ─────────────────────────────────────── */
 .stats-container { display: flex; flex-direction: column; gap: 18px; }
@@ -920,8 +830,6 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
   box-shadow: 0 0 0 4px var(--ring);
 }
 
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
 .form-actions {
   display: flex;
   gap: 8px;
@@ -1017,47 +925,8 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
 .gain-neg { color: var(--expense); }
 
 /* ── HYSA ───────────────────────────────────────────────── */
-.hysa-type-toggle {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.hysa-type-btn {
-  padding: 8px 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--secondary);
-  color: var(--muted-foreground);
-  font-size: 0.8125rem;
-  font-weight: 500;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background var(--response-fast) var(--ease-out),
-              color var(--response-fast) var(--ease-out),
-              transform 90ms var(--ease-out);
-}
-
-.hysa-type-btn:hover { background: var(--accent); }
-.hysa-type-btn.active.deposit    { background: rgba(29, 143, 78, 0.14); border-color: transparent; color: var(--income); }
-.hysa-type-btn.active.withdrawal { background: rgba(208, 52, 44, 0.14); border-color: transparent; color: var(--expense); }
-
 .hysa-submit-btn { background: var(--primary) !important; }
-.hysa-submit-btn.withdrawal { background: var(--danger) !important; }
-
-.hysa-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.hysa-badge.deposit    { background: rgba(29, 143, 78, 0.14); color: var(--income); }
-.hysa-badge.withdrawal { background: rgba(208, 52, 44, 0.14); color: var(--expense); }
 .hysa-pos { color: var(--income); font-weight: 600; }
-.hysa-neg { color: var(--expense); font-weight: 600; }
 
 /* ── Theme toggle ───────────────────────────────────────── */
 .sidebar-footer {
@@ -1152,7 +1021,6 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
   .summary-grid.three-col,
   .summary-grid.four-col { grid-template-columns: 1fr; }
   .inv-summary-grid { grid-template-columns: 1fr 1fr; }
-  .form-row { grid-template-columns: 1fr; }
   .cost-basis-grid { grid-template-columns: 1fr; }
   .content { padding: 16px; }
   .allocation-chart-wrap { width: 220px; height: 220px; }
@@ -1173,7 +1041,6 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
   .icon-btn:active,
   .theme-toggle:active,
   .range-btn:active,
-  .hysa-type-btn:active,
   .stat-card--link:active,
   .stat-card--link:hover { transform: none; }
 

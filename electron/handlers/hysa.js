@@ -58,17 +58,6 @@ function register() {
     return { transaction: newTx, hysa_balance: inv.hysa_balance }
   })
 
-  ipcMain.handle('update-hysa-balance', (_, value) => {
-    value = parseFloat(value)
-    if (isNaN(value) || value < 0) throw new Error('Balance must be a non-negative number')
-    const inv = readJSON('investments.json')
-    inv.hysa_balance = value
-    inv.last_updated = new Date().toISOString()
-    writeJSON('investments.json', inv)
-    appendSnapshot(inv)
-    return { hysa_balance: inv.hysa_balance }
-  })
-
   // Reports which linked item (if any) can supply a HYSA balance, so the UI
   // can show the sync button only when it would actually work.
   ipcMain.handle('get-hysa-source', () => {

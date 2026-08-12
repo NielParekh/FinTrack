@@ -2,20 +2,16 @@ import { useState, useEffect, useMemo } from 'react'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import { getSpendingTransactions, getSpendingAccounts } from '../lib/api'
-import { fmt } from '../lib/utils'
+import { fmt, isPurchase, monthKey } from '../lib/utils'
+import { useTheme } from '../lib/useTheme'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
 
-// Money moving, not money spent — never charted here
-const NON_SPEND = new Set(['Payments', 'Refunds'])
-
-const PALETTE = {
-  light: { accent: '#2a78d6', dim: '#d6d5cd', grid: '#e1e0d9', tick: '#898781' },
-  dark:  { accent: '#3987e5', dim: '#44443f', grid: '#2c2c2a', tick: '#898781' },
-}
-
-function monthKey(date) {
-  return date.slice(0, 7)
+// Bars carry their own accent/dim pair for the filter emphasis, on top of
+// the shared axis colors.
+const BAR_PALETTE = {
+  light: { accent: '#2a78d6', dim: '#d6d5cd' },
+  dark:  { accent: '#3987e5', dim: '#44443f' },
 }
 
 export default function SpendingCharts() {
@@ -38,8 +34,8 @@ export default function SpendingCharts() {
     })()
   }, [])
 
-  const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
-  const colors = PALETTE[theme]
+  const { theme, colors: axis } = useTheme()
+  const colors = { ...axis, ...BAR_PALETTE[theme] }
 
   const cardOptions = useMemo(
     () => items.map(i => ({ id: i.item_id, label: i.institution })),
@@ -54,8 +50,7 @@ export default function SpendingCharts() {
   // Purchases only, then narrowed by the card filter
   const spendTxs = useMemo(
     () => transactions.filter(t =>
-      t.amount > 0 && !NON_SPEND.has(t.category) &&
-      (card === 'all' || accountToItem[t.account_id] === card)
+      isPurchase(t) && (card === 'all' || accountToItem[t.account_id] === card)
     ),
     [transactions, card, accountToItem]
   )

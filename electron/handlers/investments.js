@@ -46,7 +46,10 @@ function register() {
 
   ipcMain.handle('update-investments', (_, payload) => {
     const data = readJSON('investments.json')
-    const fields = ['bank_balance', 'hysa_balance', 'stock_value', 'hysa_cost_basis', 'etf_cost_basis']
+    const fields = [
+      'bank_balance', 'hysa_balance', 'stock_value',
+      'stock_cost_basis', 'hysa_cost_basis', 'etf_cost_basis',
+    ]
     for (const field of fields) {
       if (payload[field] !== undefined) data[field] = parseFloat(payload[field])
     }
@@ -54,29 +57,6 @@ function register() {
     writeJSON('investments.json', data)
     appendSnapshot(data)
     return formatInvestmentData(data)
-  })
-
-  ipcMain.handle('upsert-etf', (_, ticker, value) => {
-    ticker = ticker.trim().toUpperCase()
-    if (!ticker) throw new Error('Ticker cannot be empty')
-    if (parseFloat(value) < 0) throw new Error('Value must be >= 0')
-
-    const data = readJSON('investments.json')
-    if (!data.etfs) data.etfs = {}
-    data.etfs[ticker] = parseFloat(value)
-    data.last_updated = new Date().toISOString()
-    writeJSON('investments.json', data)
-    appendSnapshot(data)
-    return Object.entries(data.etfs).map(([t, v]) => ({ ticker: t, value: v }))
-  })
-
-  ipcMain.handle('remove-etf', (_, ticker) => {
-    ticker = ticker.trim().toUpperCase()
-    const data = readJSON('investments.json')
-    if (!data.etfs || !(ticker in data.etfs)) throw new Error(`${ticker} not found`)
-    delete data.etfs[ticker]
-    writeJSON('investments.json', data)
-    return { success: true }
   })
 
   ipcMain.handle('upsert-stock', (_, ticker, shares) => {

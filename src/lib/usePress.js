@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import { pressIn, pressOut } from './motion'
 
 // Attaches spring press feedback to every button inside a subtree.
@@ -41,13 +41,4 @@ export function usePressFeedback(ref) {
       root.removeEventListener('pointercancel', release)
     }
   }, [ref])
-}
-
-// Re-runs an enter animation whenever `key` changes.
-export function useEnterOnChange(key, fn) {
-  const ref = useRef(null)
-  useEffect(() => {
-    if (ref.current) fn(ref.current)
-  }, [key])
-  return ref
 }

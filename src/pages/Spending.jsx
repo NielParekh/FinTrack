@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
 import { getSpendingTransactions, getSpendingCategories, getSpendingAccounts, setTransactionCategory } from '../lib/api'
-import { fmt } from '../lib/utils'
+import { fmt, isPurchase, monthKey } from '../lib/utils'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -10,13 +10,6 @@ const CHART_COLORS = [
   '#6366f1', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6',
   '#06b6d4', '#f97316', '#ec4899', '#84cc16', '#64748b',
 ]
-
-// Card payments/transfers are money moving, not money spent
-const NON_SPEND = new Set(['Payments', 'Refunds'])
-
-function monthKey(date) {
-  return date.slice(0, 7) // YYYY-MM
-}
 
 export default function Spending() {
   const [transactions, setTransactions] = useState([])
@@ -62,8 +55,7 @@ export default function Spending() {
     [transactions, month]
   )
 
-  // Spend = positive amounts (money out), excluding card payments/transfers
-  const spendTxs = monthTxs.filter(t => t.amount > 0 && !NON_SPEND.has(t.category))
+  const spendTxs = monthTxs.filter(isPurchase)
   const totalSpend = spendTxs.reduce((s, t) => s + t.amount, 0)
 
   const byCategory = useMemo(() => {

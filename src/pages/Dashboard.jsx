@@ -4,12 +4,10 @@ import { Line } from 'react-chartjs-2'
 import {
   getInvestments, getInvestmentHistory, getSpendingTransactions, getSpendingAccounts,
 } from '../lib/api'
-import { fmt, fmtGain, fmtPct } from '../lib/utils'
+import { fmt, fmtGain, fmtPct, isPurchase, monthKey } from '../lib/utils'
+import { useTheme } from '../lib/useTheme'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
-
-// Money moving, not money spent — matches the Spending pages
-const NON_SPEND = new Set(['Payments', 'Refunds'])
 
 const RANGES = [
   { id: '1m', label: '1M', days: 30 },
@@ -17,10 +15,6 @@ const RANGES = [
   { id: '1y', label: '1Y', days: 365 },
   { id: 'all', label: 'All', days: null },
 ]
-
-function monthKey(date) {
-  return date.slice(0, 7)
-}
 
 function shiftMonth(key, delta) {
   const [y, m] = key.split('-').map(Number)
@@ -34,10 +28,8 @@ export default function Dashboard({ setActiveTab }) {
   const [transactions, setTransactions] = useState([])
   const [cards, setCards] = useState([])
   const [range, setRange] = useState('6m')
-  const [theme, setTheme] = useState(
-    () => document.documentElement.getAttribute('data-theme') || 'light'
-  )
   const [error, setError] = useState('')
+  const { colors } = useTheme()
 
   useEffect(() => {
     (async () => {
@@ -56,21 +48,13 @@ export default function Dashboard({ setActiveTab }) {
     })()
   }, [])
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setTheme(document.documentElement.getAttribute('data-theme') || 'light')
-    })
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
-    return () => observer.disconnect()
-  }, [])
-
   const thisMonth = monthKey(new Date().toISOString())
   const lastMonth = shiftMonth(thisMonth, -1)
 
   const spend = useMemo(() => {
     const totals = {}
     for (const t of transactions) {
-      if (t.amount <= 0 || NON_SPEND.has(t.category)) continue
+      if (!isPurchase(t)) continue
       const m = monthKey(t.date)
       totals[m] = (totals[m] || 0) + t.amount
     }
@@ -110,8 +94,6 @@ export default function Dashboard({ setActiveTab }) {
 
   const cash = (inv.bank_balance || 0) + (inv.hysa_balance || 0)
 
-  const tickColor = theme === 'dark' ? '#a1a1aa' : '#71717a'
-  const gridColor = theme === 'dark' ? '#27272a' : '#e4e4e7'
   const lineColor = change >= 0 ? '#16a34a' : '#dc2626'
 
   const chart = {
@@ -137,16 +119,14 @@ export default function Dashboard({ setActiveTab }) {
         tooltip: { callbacks: { label: ctx => ` $${fmt(ctx.parsed.y)}` } },
       },
       scales: {
-        x: { ticks: { color: tickColor, maxTicksLimit: 6 }, grid: { display: false } },
-        y: { ticks: { color: tickColor, callback: v => '$' + fmt(v) }, grid: { color: gridColor } },
+        x: { ticks: { color: colors.tick, maxTicksLimit: 6 }, grid: { display: false } },
+        y: { ticks: { color: colors.tick, callback: v => '$' + fmt(v) }, grid: { color: colors.grid } },
       },
     },
   }
 
   const g = fmtGain(portfolioGain)
-  const recent = transactions
-    .filter(t => t.amount > 0 && !NON_SPEND.has(t.category))
-    .slice(0, 5)
+  const recent = transactions.filter(isPurchase).slice(0, 5)
 
   const tiles = [
     {
