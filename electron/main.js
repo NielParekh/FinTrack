@@ -40,6 +40,12 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 1100,
     height: 750,
+    // Packaged builds take their icon from the app bundle (electron-builder
+    // installs build/icon.icns); in dev there is no bundle, so point at the
+    // PNG, which is what nativeImage can actually decode.
+    ...(isDev
+      ? { icon: path.join(__dirname, '..', 'build', 'icons', 'icon-512.png') }
+      : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -58,6 +64,21 @@ function createWindow() {
 
 app.whenReady().then(() => {
   ensureDataDir()
+  // The BrowserWindow icon option is a no-op for the macOS Dock, so set it
+  // explicitly. Dev only — packaged builds use the bundle's own icon.
+  // Must be the PNG: nativeImage cannot decode .icns, and passing that path
+  // throws rather than failing soft.
+  if (isDev && process.platform === 'darwin' && app.dock) {
+    const devIcon = path.join(__dirname, '..', 'build', 'icons', 'icon-512.png')
+    if (fs.existsSync(devIcon)) {
+      try {
+        app.dock.setIcon(devIcon)
+      } catch (err) {
+        // Cosmetic only — never let a missing dev icon stop the app booting
+        log.warn('Could not set dev dock icon:', err.message)
+      }
+    }
+  }
   createWindow()
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

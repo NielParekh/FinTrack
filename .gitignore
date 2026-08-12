@@ -3,7 +3,11 @@
 
 # build output
 /dist
-/build
+/build/*
+# ...but the app icon and its vector source are checked-in inputs, not output:
+# package.json and electron/main.js both reference them by path.
+!/build/icon.icns
+!/build/icons
 
 # misc
 .DS_Store

@@ -24,6 +24,11 @@ function redact(value) {
     return SECRET_PATTERNS.reduce((s, re) => s.replace(re, '[redacted]'), value)
   }
   if (Array.isArray(value)) return value.map(redact)
+  // Errors carry their payload on non-enumerable fields, so the generic
+  // object walk below would render them as {} and lose the message entirely.
+  if (value instanceof Error) {
+    return redact(value.stack || `${value.name}: ${value.message}`)
+  }
   if (value && typeof value === 'object') {
     const out = {}
     for (const [k, v] of Object.entries(value)) {
