@@ -3,6 +3,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { Line } from 'react-chartjs-2'
 import {
   getInvestments, getInvestmentHistory, getSpendingTransactions, getSpendingAccounts,
+  syncTransactions,
 } from '../lib/api'
 import { fmt, fmtGain, fmtPct, isPurchase, monthKey } from '../lib/utils'
 import { useTheme } from '../lib/useTheme'
@@ -29,24 +30,43 @@ export default function Dashboard({ setActiveTab }) {
   const [cards, setCards] = useState([])
   const [range, setRange] = useState('6m')
   const [error, setError] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [syncMsg, setSyncMsg] = useState('')
   const { colors } = useTheme()
 
+  async function load() {
+    const [i, h, txs, accts] = await Promise.all([
+      getInvestments(), getInvestmentHistory(),
+      getSpendingTransactions(), getSpendingAccounts(),
+    ])
+    setInv(i)
+    setHistory(h)
+    setTransactions(txs)
+    setCards(accts)
+  }
+
   useEffect(() => {
-    (async () => {
-      try {
-        const [i, h, txs, accts] = await Promise.all([
-          getInvestments(), getInvestmentHistory(),
-          getSpendingTransactions(), getSpendingAccounts(),
-        ])
-        setInv(i)
-        setHistory(h)
-        setTransactions(txs)
-        setCards(accts)
-      } catch (err) {
-        setError(err.message)
-      }
-    })()
+    load().catch(err => setError(err.message))
   }, [])
+
+  async function handleSyncCards() {
+    setError('')
+    setSyncMsg('Syncing…')
+    setSyncing(true)
+    try {
+      const res = await syncTransactions()
+      const parts = [`${res.added} new`, `${res.modified} updated`]
+      if (res.removed) parts.push(`${res.removed} removed`)
+      setSyncMsg(`Sync complete: ${parts.join(', ')}.`)
+      if (res.errors?.length) setError(res.errors.join(' · '))
+      await load()
+    } catch (err) {
+      setError(err.message)
+      setSyncMsg('')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const thisMonth = monthKey(new Date().toISOString())
   const lastMonth = shiftMonth(thisMonth, -1)
@@ -72,7 +92,9 @@ export default function Dashboard({ setActiveTab }) {
     return windowed.length > 1 ? windowed : history.slice(-2)
   }, [history, range])
 
-  if (error) {
+  // Only blank the page when the initial load failed; a sync error still has
+  // a rendered dashboard to sit inside, so it shows inline under Connections.
+  if (error && !inv) {
     return <div className="card"><div className="card-body error-banner">⚠️ {error}</div></div>
   }
   if (!inv) return null
@@ -246,10 +268,17 @@ export default function Dashboard({ setActiveTab }) {
               </ul>
             )}
             <div className="link-actions">
+              {cards.length > 0 && (
+                <button className="btn btn-secondary" onClick={handleSyncCards} disabled={syncing}>
+                  {syncing ? 'Syncing…' : '⟳ Sync cards'}
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={() => setActiveTab('spending-accounts')}>
                 Manage cards
               </button>
             </div>
+            {syncMsg && <p className="muted-cell sync-status">{syncMsg}</p>}
+            {error && <p className="error-banner sync-status">⚠️ {error}</p>}
           </div>
         </div>
       </div>
