@@ -105,4 +105,20 @@ function appendSnapshot(data) {
   writeJSON('investment_history.json', history)
 }
 
-module.exports = { ensureDataDir, getDataDir, readJSON, writeJSON, getNextId, appendSnapshot }
+// Balances can change without going through a handler that snapshots — most
+// notably the brokerage holdings sync, which rewrites ETF values directly.
+// Reconciling on read keeps today's row honest no matter who moved what, so
+// the dashboard (which reads history) can't drift from the live totals.
+function reconcileSnapshot(data) {
+  const history = readJSON('investment_history.json')
+  const snap = historySnapshot(data)
+  const current = history.find(h => h.date === snap.date)
+  const fields = ['bank_balance', 'hysa_balance', 'stock_value', 'etf_total', 'net_worth']
+  if (current && fields.every(f => (current[f] || 0) === snap[f])) return
+  appendSnapshot(data)
+}
+
+module.exports = {
+  ensureDataDir, getDataDir, readJSON, writeJSON, getNextId,
+  appendSnapshot, reconcileSnapshot,
+}

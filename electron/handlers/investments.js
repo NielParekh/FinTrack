@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron')
-const { readJSON, writeJSON, appendSnapshot } = require('../lib/data')
+const { readJSON, writeJSON, appendSnapshot, reconcileSnapshot } = require('../lib/data')
 const { fetchPrices } = require('../lib/prices')
 
 // Synced brokerage holdings are the source of truth for ETFs once present;
@@ -41,7 +41,9 @@ function formatInvestmentData(data) {
 
 function register() {
   ipcMain.handle('get-investments', () => {
-    return formatInvestmentData(readJSON('investments.json'))
+    const data = readJSON('investments.json')
+    reconcileSnapshot(data)
+    return formatInvestmentData(data)
   })
 
   ipcMain.handle('update-investments', (_, payload) => {
