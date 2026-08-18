@@ -56,6 +56,7 @@ export default function Stocks() {
   const [sharesInput, setSharesInput] = useState('')
   const [saveLabel, setSaveLabel] = useState('Add Stock')
   const [sellStock, setSellStock] = useState(null)
+  const [cash, setCash] = useState(0)
 
   async function loadPrices(positions) {
     if (!positions.length) return
@@ -79,6 +80,9 @@ export default function Stocks() {
     const positions = data.stocks || []
     setStocks(positions)
     setRealizedGains(data.stock_realized_gains || 0)
+    // Comes from the backend so the card and net worth always agree — it
+    // already excludes any institution whose cash is counted as the HYSA.
+    setCash(data.brokerage_cash || 0)
     await loadPrices(positions)
   }
 
@@ -131,11 +135,19 @@ export default function Stocks() {
         />
       )}
 
-      <div className="summary-grid two-col mb-24">
+      {/* Cash only appears once a brokerage actually reports some — with no
+          linked brokerage the layout stays the original two columns. */}
+      <div className={`summary-grid ${cash > 0 ? 'three-col' : 'two-col'} mb-24`}>
         <div className="stat-card">
           <div className="stat-label">Total Stock Value</div>
           <div className="stat-value">{pricesLoading ? '...' : `$${fmt(totalValue)}`}</div>
         </div>
+        {cash > 0 && (
+          <div className="stat-card">
+            <div className="stat-label">Cash</div>
+            <div className="stat-value">${fmt(cash)}</div>
+          </div>
+        )}
         <div className="stat-card">
           <div className="stat-label">Realized Gains</div>
           <div className="stat-value" style={{ color: realizedGains >= 0 ? 'var(--income)' : 'var(--expense)' }}>

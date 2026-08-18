@@ -28,11 +28,20 @@ async function fetchHoldingsForItem(item) {
   const securities = new Map(res.data.securities.map(s => [s.security_id, s]))
   const accounts = new Map(res.data.accounts.map(a => [a.account_id, a.name]))
 
-  return res.data.holdings
-    // Brokerages report uninvested cash as a holding (ticker CUR:USD) —
-    // it's a balance, not a position
-    .filter(h => securities.get(h.security_id)?.type !== 'cash')
+  const isCash = h => securities.get(h.security_id)?.type === 'cash'
+
+  // Uninvested cash is a balance, not a position, so it stays out of the
+  // holdings list — but it's still real money, so return it separately rather
+  // than discarding it. No extra API call: it rides along in this response.
+  const cash = res.data.holdings
+    .filter(isCash)
+    .reduce((sum, h) => sum + (h.institution_value || 0), 0)
+
+  const holdings = res.data.holdings
+    .filter(h => !isCash(h))
     .map(h => toHolding(h, securities.get(h.security_id), accounts.get(h.account_id)))
+
+  return { holdings, cash }
 }
 
 function register() {
@@ -67,11 +76,13 @@ function register() {
     if (!brokerages.length) return { holdings: 0, errors: [] }
 
     const all = []
+    const cashByInstitution = {}
     const errors = []
     for (const item of brokerages) {
       try {
-        const holdings = await fetchHoldingsForItem(item)
+        const { holdings, cash } = await fetchHoldingsForItem(item)
         for (const h of holdings) all.push({ ...h, institution: item.institution })
+        cashByInstitution[item.institution] = (cashByInstitution[item.institution] || 0) + cash
         item.status = 'ok'
         item.last_synced = new Date().toISOString()
         delete item.error
@@ -90,6 +101,7 @@ function register() {
     if (all.length || !errors.length) {
       writeJSON('plaid_holdings.json', {
         holdings: all,
+        cash: cashByInstitution,
         synced_at: new Date().toISOString(),
       })
     }
@@ -114,10 +126,11 @@ function register() {
     items.splice(idx, 1)
     writeJSON('plaid_items.json', items)
 
-    // Drop this institution's holdings from the stored snapshot
+    // Drop this institution's holdings and cash from the stored snapshot
     const stored = readJSON('plaid_holdings.json')
     const remaining = (stored.holdings || []).filter(h => h.institution !== institution)
-    writeJSON('plaid_holdings.json', { ...stored, holdings: remaining })
+    const { [institution]: _removed, ...cash } = stored.cash || {}
+    writeJSON('plaid_holdings.json', { ...stored, holdings: remaining, cash })
     return { success: true }
   })
 }

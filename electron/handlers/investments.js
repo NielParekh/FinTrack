@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron')
-const { readJSON, writeJSON, appendSnapshot, reconcileSnapshot } = require('../lib/data')
+const { readJSON, writeJSON, appendSnapshot, reconcileSnapshot, brokerageCash } = require('../lib/data')
 const { fetchPrices } = require('../lib/prices')
 
 // Synced brokerage holdings are the source of truth for ETFs once present;
@@ -35,6 +35,8 @@ function formatInvestmentData(data) {
       shares: typeof val === 'object' ? val.shares : val,
     })),
     stock_realized_gains: data.stock_realized_gains || 0,
+    // Uninvested brokerage cash, excluding whatever already feeds hysa_balance
+    brokerage_cash: brokerageCash(data),
     last_updated: data.last_updated || null,
   }
 }

@@ -119,6 +119,9 @@ function register() {
       // Pin the resolved account so later syncs stay on the same one even if
       // another cash account is linked afterwards.
       inv.hysa_account_id = account.account_id
+      // Recorded so brokerageCash() can skip this institution — its cash is
+      // already counted here and must not be added to net worth twice.
+      inv.hysa_institution = item.institution
       inv.hysa_synced_at = new Date().toISOString()
       inv.last_updated = new Date().toISOString()
       writeJSON('investments.json', inv)

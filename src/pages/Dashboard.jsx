@@ -104,10 +104,12 @@ export default function Dashboard({ setActiveTab }) {
   const change = netWorth - first
   const changePct = first > 0 ? (change / first) * 100 : null
 
+  // Uninvested brokerage cash carries at face value on both sides, matching
+  // how the Investments page treats it, so the two pages can't disagree.
   const invested = (inv.stock_cost_basis || 0) + (inv.hysa_cost_basis || 0) +
-    (inv.etf_cost_basis || 0) + (inv.bank_balance || 0)
+    (inv.etf_cost_basis || 0) + (inv.bank_balance || 0) + (inv.brokerage_cash || 0)
   const current = (inv.bank_balance || 0) + (inv.hysa_balance || 0) +
-    (inv.stock_value || 0) + (inv.etf_total || 0)
+    (inv.stock_value || 0) + (inv.etf_total || 0) + (inv.brokerage_cash || 0)
   const portfolioGain = invested > 0 ? current - invested : null
 
   const thisSpend = spend[thisMonth] || 0

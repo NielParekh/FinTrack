@@ -77,19 +77,34 @@ function getNextId(items) {
   return Math.max(...items.map(t => t.id)) + 1
 }
 
+// Uninvested cash sitting in linked brokerages. Any institution that also
+// supplies the HYSA balance is skipped: that money is already counted in
+// hysa_balance, and adding it again would double-count it. Shared by the
+// investments handler and historySnapshot so the live page and the dashboard
+// can never compute net worth differently.
+function brokerageCash(data) {
+  const cash = readJSON('plaid_holdings.json').cash || {}
+  const hysaSource = data.hysa_institution || null
+  return Object.entries(cash)
+    .filter(([institution]) => institution !== hysaSource)
+    .reduce((sum, [, value]) => sum + (value || 0), 0)
+}
+
 function historySnapshot(data) {
   // Prefer synced brokerage holdings over the manual etfs object
   const synced = (readJSON('plaid_holdings.json').holdings || []).filter(h => h.type === 'etf')
   const etfTotal = synced.length
     ? synced.reduce((s, h) => s + (h.value || 0), 0)
     : Object.values(data.etfs || {}).reduce((s, v) => s + v, 0)
+  const cash = brokerageCash(data)
   return {
     date: new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' }),
     bank_balance: data.bank_balance || 0,
     hysa_balance: data.hysa_balance || 0,
     stock_value: data.stock_value || 0,
     etf_total: etfTotal,
-    net_worth: (data.bank_balance || 0) + (data.hysa_balance || 0) + (data.stock_value || 0) + etfTotal,
+    brokerage_cash: cash,
+    net_worth: (data.bank_balance || 0) + (data.hysa_balance || 0) + (data.stock_value || 0) + etfTotal + cash,
   }
 }
 
@@ -113,12 +128,12 @@ function reconcileSnapshot(data) {
   const history = readJSON('investment_history.json')
   const snap = historySnapshot(data)
   const current = history.find(h => h.date === snap.date)
-  const fields = ['bank_balance', 'hysa_balance', 'stock_value', 'etf_total', 'net_worth']
+  const fields = ['bank_balance', 'hysa_balance', 'stock_value', 'etf_total', 'brokerage_cash', 'net_worth']
   if (current && fields.every(f => (current[f] || 0) === snap[f])) return
   appendSnapshot(data)
 }
 
 module.exports = {
   ensureDataDir, getDataDir, readJSON, writeJSON, getNextId,
-  appendSnapshot, reconcileSnapshot,
+  appendSnapshot, reconcileSnapshot, brokerageCash,
 }
