@@ -9,7 +9,7 @@ import { fmt, fmtGain, fmtPct } from '../lib/utils'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
-const ALLOC_COLORS = ['#9333ea', '#2563eb', '#d97706', '#16a34a']
+const ALLOC_COLORS = ['#9333ea', '#2563eb', '#d97706', '#16a34a', '#0891b2']
 
 function CostBasisCard({ title, description, value, onSave }) {
   const [input, setInput] = useState('')
@@ -75,13 +75,21 @@ export default function Investments() {
 
   useEffect(() => { load() }, [])
 
-  const realized = inv.stock_realized_gains || 0
-  const stockGain = inv.stock_cost_basis > 0 ? (inv.stock_value - inv.stock_cost_basis) + realized : (realized !== 0 ? realized : null)
+  // Gain is unrealized only: current value minus cost basis, matching the
+  // Invested and Current columns shown beside it. Realized gains from past
+  // sales are tracked separately on the Stocks page — folding them in here
+  // made the Gain column disagree with its own row.
+  const stockGain = inv.stock_cost_basis > 0 ? inv.stock_value - inv.stock_cost_basis : null
   const hysaGain  = inv.hysa_cost_basis > 0  ? inv.hysa_balance - inv.hysa_cost_basis  : null
   const etfGain   = inv.etf_cost_basis > 0   ? inv.etf_total - inv.etf_cost_basis      : null
 
-  const totalInvested = (inv.stock_cost_basis || 0) + (inv.hysa_cost_basis || 0) + (inv.etf_cost_basis || 0) + inv.bank_balance
-  const totalCurrent  = inv.bank_balance + inv.hysa_balance + inv.stock_value + inv.etf_total
+  // Uninvested brokerage cash is real money, so it counts toward net worth.
+  // Like Bank, it carries at face value on both sides — invested equals
+  // current, so it adds no phantom gain while keeping both columns summing
+  // to their totals.
+  const brokerageCash = inv.brokerage_cash || 0
+  const totalInvested = (inv.stock_cost_basis || 0) + (inv.hysa_cost_basis || 0) + (inv.etf_cost_basis || 0) + inv.bank_balance + brokerageCash
+  const totalCurrent  = inv.bank_balance + inv.hysa_balance + inv.stock_value + inv.etf_total + brokerageCash
   const totalGain     = (stockGain || 0) + (hysaGain || 0) + (etfGain || 0)
 
   const rows = [
@@ -89,6 +97,10 @@ export default function Investments() {
     { label: 'HYSA',   invested: inv.hysa_cost_basis  || null, current: inv.hysa_balance,  gain: hysaGain  },
     { label: 'ETFs',   invested: inv.etf_cost_basis   || null, current: inv.etf_total,     gain: etfGain   },
     { label: 'Bank',   invested: inv.bank_balance,             current: inv.bank_balance,  gain: null      },
+    // Uninvested cash: no basis, no gain — shown so the rows sum to net worth
+    ...(brokerageCash > 0
+      ? [{ label: 'Brokerage Cash', invested: brokerageCash, current: brokerageCash, gain: null }]
+      : []),
   ]
 
   const summaryCards = [
@@ -102,6 +114,7 @@ export default function Investments() {
     { label: 'HYSA',   value: inv.hysa_balance },
     { label: 'ETFs',   value: inv.etf_total },
     { label: 'Bank',   value: inv.bank_balance },
+    ...(brokerageCash > 0 ? [{ label: 'Cash', value: brokerageCash }] : []),
   ]
 
   const allocData = {
