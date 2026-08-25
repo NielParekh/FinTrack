@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
-import { getInvestments, fetchStockPrices, upsertStock, removeStock, updateStockValue, addStockSale } from '../lib/api'
+import {
+  getInvestments, getHoldings, syncHoldings, fetchStockPrices,
+  upsertStock, removeStock, updateStockValue, addStockSale,
+} from '../lib/api'
 import { fmt } from '../lib/utils'
 
 function SellModal({ ticker, onConfirm, onClose }) {
@@ -48,10 +51,14 @@ function SellModal({ ticker, onConfirm, onClose }) {
 
 export default function Stocks() {
   const [stocks, setStocks] = useState([])
+  const [holdings, setHoldings] = useState([])
+  const [syncedAt, setSyncedAt] = useState(null)
   const [prices, setPrices] = useState({})
   const [realizedGains, setRealizedGains] = useState(0)
   const [pricesLoading, setPricesLoading] = useState(false)
   const [pricesError, setPricesError] = useState(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncStatus, setSyncStatus] = useState('')
   const [tickerInput, setTickerInput] = useState('')
   const [sharesInput, setSharesInput] = useState('')
   const [saveLabel, setSaveLabel] = useState('Add Stock')
@@ -76,17 +83,47 @@ export default function Stocks() {
   }
 
   async function load() {
-    const data = await getInvestments()
+    const [data, held] = await Promise.all([getInvestments(), getHoldings()])
+    const synced = (held?.holdings || []).filter(h => h.type === 'stock')
+    setHoldings(synced)
+    setSyncedAt(held?.synced_at || null)
+
     const positions = data.stocks || []
     setStocks(positions)
     setRealizedGains(data.stock_realized_gains || 0)
     // Comes from the backend so the card and net worth always agree — it
     // already excludes any institution whose cash is counted as the HYSA.
     setCash(data.brokerage_cash || 0)
-    await loadPrices(positions)
+
+    // Synced holdings carry their own broker price and value, so the Yahoo
+    // lookup is only needed for manually entered positions. The synced total
+    // still has to be written back, or net worth keeps comparing the manual
+    // cost basis against a stale stock value.
+    if (synced.length) {
+      await updateStockValue(synced.reduce((sum, h) => sum + (h.value || 0), 0))
+    } else {
+      await loadPrices(positions)
+    }
   }
 
   useEffect(() => { load() }, [])
+
+  async function handleSync() {
+    setSyncing(true)
+    setSyncStatus('Syncing…')
+    setPricesError(null)
+    try {
+      const res = await syncHoldings()
+      await load()
+      setSyncStatus(`Synced ${res.holdings} holdings.`)
+      if (res.errors?.length) setPricesError(res.errors.join(' · '))
+    } catch (err) {
+      setPricesError(err.message)
+      setSyncStatus('')
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   async function handleUpsert(e) {
     e.preventDefault()
@@ -123,7 +160,50 @@ export default function Stocks() {
   }
 
   const isEditing = saveLabel !== 'Add Stock'
-  const totalValue = stocks.reduce((sum, { ticker, shares }) => sum + shares * (prices[ticker] || 0), 0)
+
+  // Synced brokerage holdings win once they exist; manual entries are the
+  // fallback until a brokerage is linked.
+  const isSynced = holdings.length > 0
+
+  const rows = isSynced
+    ? holdings.map(h => {
+        const value = h.value ?? 0
+        // Plaid marks cost_basis optional, and a zero basis would divide out
+        // to a meaningless percentage — both cases show as no gain.
+        const hasBasis = h.cost_basis != null && h.cost_basis > 0
+        const gain = hasBasis ? value - h.cost_basis : null
+        return {
+          key: h.ticker + h.institution,
+          ticker: h.ticker,
+          name: h.name,
+          shares: h.shares,
+          value,
+          gain,
+          gainPct: hasBasis ? (gain / h.cost_basis) * 100 : null,
+          institution: h.institution,
+        }
+      })
+    : stocks.map(({ ticker, shares }) => {
+        const price = prices[ticker]
+        return {
+          key: ticker,
+          ticker,
+          shares,
+          price,
+          value: price != null ? shares * price : null,
+          gain: null,
+          gainPct: null,
+        }
+      })
+
+  const totalValue = rows.reduce((sum, r) => sum + (r.value || 0), 0)
+
+  // Per-row profit/loss is display-only: it runs off the cost basis the broker
+  // reports, which for Robinhood is incomplete. Portfolio-level gain — the one
+  // that feeds net worth on the Dashboard and Investments pages — deliberately
+  // ignores it and uses the manually entered stock_cost_basis instead, so a
+  // wrong broker basis can never move net worth.
+  const noBasis = isSynced ? holdings.filter(h => h.cost_basis == null || h.cost_basis <= 0).length : 0
 
   return (
     <>
@@ -156,91 +236,133 @@ export default function Stocks() {
         </div>
       </div>
 
-      <div className="form-table-layout">
-        <div className="card">
-          <div className="card-header"><h2>{saveLabel}</h2></div>
-          <div className="card-body">
-            <p className="inv-desc">Enter a ticker and share count. Prices are fetched live from Yahoo Finance.</p>
-            <form onSubmit={handleUpsert}>
-              <div className="input-group">
-                <label>Ticker</label>
-                <input
-                  type="text"
-                  placeholder="AAPL"
-                  value={tickerInput}
-                  onChange={e => { setTickerInput(e.target.value.toUpperCase()); setSaveLabel('Add Stock') }}
-                />
-              </div>
-              <div className="input-group">
-                <label>Shares</label>
-                <input
-                  type="number"
-                  step="0.0001"
-                  placeholder="0"
-                  value={sharesInput}
-                  onChange={e => setSharesInput(e.target.value)}
-                />
-              </div>
-              <button type="submit" className="btn btn-primary full-width">{saveLabel}</button>
-              {isEditing && (
-                <button type="button" className="btn full-width mt-6" onClick={clearForm}>Cancel</button>
-              )}
-            </form>
+      <div className={isSynced ? '' : 'form-table-layout'}>
+        {!isSynced && (
+          <div className="card">
+            <div className="card-header"><h2>{saveLabel}</h2></div>
+            <div className="card-body">
+              <p className="inv-desc">Enter a ticker and share count. Prices are fetched live from Yahoo Finance.</p>
+              <form onSubmit={handleUpsert}>
+                <div className="input-group">
+                  <label>Ticker</label>
+                  <input
+                    type="text"
+                    placeholder="AAPL"
+                    value={tickerInput}
+                    onChange={e => { setTickerInput(e.target.value.toUpperCase()); setSaveLabel('Add Stock') }}
+                  />
+                </div>
+                <div className="input-group">
+                  <label>Shares</label>
+                  <input
+                    type="number"
+                    step="0.0001"
+                    placeholder="0"
+                    value={sharesInput}
+                    onChange={e => setSharesInput(e.target.value)}
+                  />
+                </div>
+                <button type="submit" className="btn btn-primary full-width">{saveLabel}</button>
+                {isEditing && (
+                  <button type="button" className="btn full-width mt-6" onClick={clearForm}>Cancel</button>
+                )}
+              </form>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="card">
           <div className="card-header">
             <h2>Holdings</h2>
-            <button
-              className="icon-btn refresh-btn"
-              title="Refresh prices"
-              disabled={pricesLoading || stocks.length === 0}
-              onClick={() => loadPrices(stocks)}
-            >
-              {pricesLoading ? '⏳' : '↻'}
-            </button>
+            {isSynced ? (
+              syncedAt && (
+                <span className="muted-cell">Synced {new Date(syncedAt).toLocaleString()}</span>
+              )
+            ) : (
+              <button
+                className="icon-btn refresh-btn"
+                title="Refresh prices"
+                disabled={pricesLoading || stocks.length === 0}
+                onClick={() => loadPrices(stocks)}
+              >
+                {pricesLoading ? '⏳' : '↻'}
+              </button>
+            )}
           </div>
           <div className="card-body">
             {pricesError && <p className="error-text">{pricesError}</p>}
-            {stocks.length === 0 ? (
-              <p className="etf-empty">No stocks added yet. Use the form to add your first position.</p>
+            {rows.length === 0 ? (
+              <p className="etf-empty">
+                No stocks yet. Link your brokerage from the ETFs tab to pull holdings automatically, or add one manually.
+              </p>
             ) : (
               <table className="stock-table">
                 <thead>
                   <tr>
-                    <th>Ticker</th>
+                    <th>Symbol</th>
                     <th>Shares</th>
-                    <th>Live Price</th>
-                    <th>Value</th>
-                    <th></th>
+                    {isSynced && <th>Market Value</th>}
+                    {!isSynced && <th>Live Price</th>}
+                    {!isSynced && <th>Value</th>}
+                    {isSynced && <th>Profit / Loss</th>}
+                    {isSynced && <th>P/L %</th>}
+                    {isSynced && <th>Account</th>}
+                    {!isSynced && <th></th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {stocks.map(({ ticker, shares }) => {
-                    const price = prices[ticker]
-                    const value = price != null ? shares * price : null
-                    return (
-                      <tr key={ticker}>
-                        <td><span className="etf-ticker-badge">{ticker}</span></td>
-                        <td className="stock-num">{shares}</td>
+                  {rows.map(r => (
+                    <tr key={r.key}>
+                      <td>
+                        <span className="etf-ticker-badge">{r.ticker}</span>
+                      </td>
+                      <td className="stock-num">
+                        {r.shares?.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                      </td>
+                      {isSynced && (
+                        <td className="stock-num stock-value-cell">${fmt(r.value)}</td>
+                      )}
+                      {!isSynced && (
                         <td className="stock-num">
-                          {price != null ? `$${fmt(price)}` : pricesLoading ? '...' : 'N/A'}
+                          {r.price != null ? `$${fmt(r.price)}` : pricesLoading ? '...' : 'N/A'}
                         </td>
+                      )}
+                      {!isSynced && (
                         <td className="stock-num stock-value-cell">
-                          {value != null ? `$${fmt(value)}` : '—'}
+                          {r.value != null ? `$${fmt(r.value)}` : '—'}
                         </td>
+                      )}
+                      {isSynced && (
+                        <td className="stock-num">
+                          {r.gain === null ? '—' : (
+                            <span className={r.gain >= 0 ? 'gain-positive' : 'gain-negative'}>
+                              {r.gain >= 0 ? '+' : '−'}${fmt(Math.abs(r.gain))}
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {isSynced && (
+                        <td className="stock-num">
+                          {r.gainPct === null ? '—' : (
+                            <span className={r.gainPct >= 0 ? 'gain-positive' : 'gain-negative'}>
+                              {r.gainPct >= 0 ? '+' : '−'}{Math.abs(r.gainPct).toFixed(2)}%
+                            </span>
+                          )}
+                        </td>
+                      )}
+                      {isSynced && <td className="muted-cell">{r.institution}</td>}
+                      {!isSynced && (
                         <td>
                           <div className="etf-holding-actions visible">
-                            <button className="icon-btn sell-btn" title="Sell" onClick={() => setSellStock({ ticker, shares })}>$</button>
-                            <button className="icon-btn" title="Edit" onClick={() => prefill(ticker, shares)}>✏️</button>
-                            <button className="icon-btn danger" title="Remove" onClick={() => handleRemove(ticker)}>🗑️</button>
+                            <button className="icon-btn sell-btn" title="Sell" onClick={() => setSellStock({ ticker: r.ticker, shares: r.shares })}>$</button>
+                            <button className="icon-btn" title="Edit" onClick={() => prefill(r.ticker, r.shares)}>✏️</button>
+                            <button className="icon-btn danger" title="Remove" onClick={() => handleRemove(r.ticker)}>🗑️</button>
                           </div>
                         </td>
-                      </tr>
-                    )
-                  })}
-                  {stocks.length > 1 && (
+                      )}
+                    </tr>
+                  ))}
+                  {!isSynced && rows.length > 1 && (
                     <tr className="stock-total-row">
                       <td colSpan={3}><strong>Total</strong></td>
                       <td className="stock-num stock-value-cell"><strong>${fmt(totalValue)}</strong></td>
@@ -249,6 +371,29 @@ export default function Stocks() {
                   )}
                 </tbody>
               </table>
+            )}
+
+            {noBasis > 0 && (
+              <p className="muted-cell sync-status">
+                {noBasis} of {holdings.length} positions report no cost basis from your brokerage — their profit/loss shows as &mdash;.
+              </p>
+            )}
+
+            {isSynced && (
+              <>
+                <p className="muted-cell sync-status">
+                  Per-position profit / loss uses the cost basis Robinhood reports, which is missing
+                  older history — treat these two columns as a rough guide. Your overall gain on the
+                  Dashboard and Investments pages is unaffected: it uses the cost basis you entered
+                  manually.
+                </p>
+                <div className="link-actions">
+                  <button className="btn btn-secondary" onClick={handleSync} disabled={syncing}>
+                    ⟳ Sync holdings
+                  </button>
+                </div>
+                {syncStatus && <p className="muted-cell sync-status">{syncStatus}</p>}
+              </>
             )}
           </div>
         </div>
