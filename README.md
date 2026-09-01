@@ -8,7 +8,7 @@ Built with Electron, React, and Chart.js.
 
 - **Dashboard** — net worth trend, portfolio gain, monthly spend, and linked-card health
 - **Investments** — bank and HYSA balances, stock positions with live prices from Yahoo Finance, and ETF holdings; asset allocation and net worth composition over time
-- **Spending** — link credit cards through [Plaid](https://plaid.com) and transactions sync automatically, with auto-categorization and per-merchant overrides
+- **Spending** — link credit cards through [Plaid](https://plaid.com) and transactions sync automatically, with auto-categorization, per-merchant overrides, and splitting for shared expenses
 - **Backup & Restore** — write every data file into a single JSON backup you can keep off this machine
 
 Plaid is optional. Without it, everything except automated card syncing still works.
@@ -57,6 +57,14 @@ npm run dist:linux  # Linux AppImage
 ```
 
 Each target must be built on its own platform.
+
+## Shared expenses
+
+Not every charge is entirely yours. Each purchase on **Spending → Overview** has a **Split** box holding the number of people it covered — set it to `4` for a dinner you paid for four, and only your quarter counts toward your totals.
+
+Set it to `0` for a charge that isn't yours at all — fronted for someone and paid back in full — and it contributes nothing.
+
+The row keeps showing the full amount the card was charged, so it still reconciles against a statement, and splits survive future syncs. A repayment that lands on a linked account arrives as its own transaction; categorize it as **Payments** or **Refunds** so it isn't counted as spending.
 
 ## Project structure
 
