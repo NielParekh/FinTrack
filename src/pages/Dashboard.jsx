@@ -5,7 +5,7 @@ import {
   getInvestments, getInvestmentHistory, getSpendingTransactions, getSpendingAccounts,
   syncTransactions,
 } from '../lib/api'
-import { fmt, fmtGain, fmtPct, isPurchase, monthKey } from '../lib/utils'
+import { fmt, fmtGain, fmtPct, isPurchase, monthKey, myShare } from '../lib/utils'
 import { useTheme } from '../lib/useTheme'
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip, Filler)
@@ -76,7 +76,7 @@ export default function Dashboard({ setActiveTab }) {
     for (const t of transactions) {
       if (!isPurchase(t)) continue
       const m = monthKey(t.date)
-      totals[m] = (totals[m] || 0) + t.amount
+      totals[m] = (totals[m] || 0) + myShare(t)
     }
     return totals
   }, [transactions])
@@ -237,7 +237,7 @@ export default function Dashboard({ setActiveTab }) {
                       <td className="muted-cell">{t.date}</td>
                       <td>{t.merchant}</td>
                       <td className="muted-cell">{t.category}</td>
-                      <td className="stock-num expense">${fmt(t.amount)}</td>
+                      <td className="stock-num expense">${fmt(myShare(t))}</td>
                     </tr>
                   ))}
                 </tbody>

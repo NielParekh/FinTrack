@@ -197,6 +197,10 @@ function register() {
               stored.user_category = existing.user_category
               stored.category = existing.user_category
             }
+            // Likewise the split — Plaid re-sends the full charge, and the
+            // share of it that's mine is a fact Plaid doesn't know about.
+            const ways = existing?.split_ways
+            if (ways === 0 || ways > 1) stored.split_ways = ways
             byId.set(tx.transaction_id, stored)
             modified++
           }
@@ -257,6 +261,28 @@ function register() {
       }
       writeJSON('spending_categories.json', cats)
     }
+
+    writeJSON('spending_transactions.json', txs)
+    return { success: true }
+  })
+
+  // Shared expenses: `amount` stays the full charge on the card, `split_ways`
+  // records how many people it covered. Every spending view divides by it.
+  // 0 is the "none of this is mine" case — fronted for someone else and paid
+  // back in full — so it counts as zero spend rather than a fraction.
+  ipcMain.handle('set-transaction-split', (_, txId, ways) => {
+    // Guard the empty string first: Number('') is 0, which would otherwise
+    // read as a deliberate "not mine" when the box was merely cleared.
+    if (typeof ways === 'string' && ways.trim() === '') throw new Error('Split cannot be blank')
+    const n = Math.round(Number(ways))
+    if (!Number.isFinite(n) || n < 0) throw new Error('Split must be a whole number of 0 or more')
+
+    const txs = readJSON('spending_transactions.json')
+    const tx = txs.find(t => t.id === txId)
+    if (!tx) throw new Error('Transaction not found')
+
+    if (n === 1) delete tx.split_ways
+    else tx.split_ways = n
 
     writeJSON('spending_transactions.json', txs)
     return { success: true }

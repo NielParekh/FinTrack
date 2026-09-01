@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
-import { getSpendingTransactions, getSpendingCategories, getSpendingAccounts, setTransactionCategory } from '../lib/api'
-import { fmt, isPurchase, monthKey } from '../lib/utils'
+import { getSpendingTransactions, getSpendingCategories, getSpendingAccounts, setTransactionCategory, setTransactionSplit } from '../lib/api'
+import { fmt, isPurchase, monthKey, myShare } from '../lib/utils'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -17,6 +17,7 @@ export default function Spending() {
   const [items, setItems] = useState([])
   const [month, setMonth] = useState(monthKey(new Date().toISOString()))
   const [error, setError] = useState('')
+  const [splitDraft, setSplitDraft] = useState({})
 
   async function load() {
     try {
@@ -55,14 +56,41 @@ export default function Spending() {
     [transactions, month]
   )
 
+  // Leaving a month abandons any half-typed split along with it
+  useEffect(() => { setSplitDraft({}) }, [month])
+
   const spendTxs = monthTxs.filter(isPurchase)
-  const totalSpend = spendTxs.reduce((s, t) => s + t.amount, 0)
+  const splitCount = spendTxs.filter(t => t.split_ways > 1).length
+  const notMineCount = spendTxs.filter(t => t.split_ways === 0).length
+  const totalSpend = spendTxs.reduce((s, t) => s + myShare(t), 0)
 
   const byCategory = useMemo(() => {
     const totals = {}
-    for (const t of spendTxs) totals[t.category] = (totals[t.category] || 0) + t.amount
+    for (const t of spendTxs) totals[t.category] = (totals[t.category] || 0) + myShare(t)
     return Object.entries(totals).sort((a, b) => b[1] - a[1])
   }, [spendTxs])
+
+  // The split box is controlled by a per-transaction draft so a re-render
+  // (a sync landing, the list re-ordering) can never carry a typed value
+  // onto a different row. Blur commits only a value the user actually
+  // changed, and anything invalid snaps back to what's stored.
+  async function commitSplit(tx) {
+    const draft = splitDraft[tx.id]
+    if (draft === undefined) return
+    setSplitDraft(d => { const { [tx.id]: _, ...rest } = d; return rest })
+
+    if (String(draft).trim() === '') return
+    const ways = Number(draft)
+    const current = tx.split_ways ?? 1
+    if (!Number.isInteger(ways) || ways < 0 || ways === current) return
+
+    try {
+      await setTransactionSplit(tx.id, ways)
+      await load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
 
   async function handleCategoryChange(tx, category) {
     try {
@@ -118,7 +146,11 @@ export default function Spending() {
           </div>
           <div className="card-body">
             <div className="spend-total">${fmt(totalSpend)}</div>
-            <p className="muted-cell">{spendTxs.length} purchases · card payments excluded</p>
+            <p className="muted-cell">
+              {spendTxs.length - notMineCount} purchases · card payments excluded
+              {splitCount > 0 && ` · ${splitCount} split`}
+              {notMineCount > 0 && ` · ${notMineCount} not mine`}
+            </p>
           </div>
         </div>
 
@@ -147,6 +179,7 @@ export default function Spending() {
                   <th>Merchant</th>
                   <th>Card</th>
                   <th>Category</th>
+                  <th>Split</th>
                   <th>Amount</th>
                 </tr>
               </thead>
@@ -165,8 +198,34 @@ export default function Spending() {
                         {categories.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     </td>
-                    <td className={`stock-num ${tx.amount > 0 ? 'expense' : 'hysa-pos'}`}>
-                      {tx.amount > 0 ? '-' : '+'}${fmt(Math.abs(tx.amount))}
+                    <td className="split-cell">
+                      {isPurchase(tx) ? (
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          className="split-input"
+                          value={splitDraft[tx.id] ?? tx.split_ways ?? 1}
+                          title="How many people this expense covered"
+                          onChange={e => setSplitDraft(d => ({ ...d, [tx.id]: e.target.value }))}
+                          onBlur={() => commitSplit(tx)}
+                          onKeyDown={e => e.key === 'Enter' && e.currentTarget.blur()}
+                        />
+                      ) : '—'}
+                    </td>
+                    <td className={`stock-num ${tx.split_ways === 0 ? 'muted-cell' : tx.amount > 0 ? 'expense' : 'hysa-pos'}`}>
+                      {tx.split_ways === 0
+                        ? '$0.00'
+                        : `${tx.amount > 0 ? '-' : '+'}$${fmt(Math.abs(myShare(tx)))}`}
+                      {tx.split_ways === 0 ? (
+                        <span className="split-full" title={`Full charge $${fmt(tx.amount)}, reimbursed in full`}>
+                          of ${fmt(tx.amount)} · not mine
+                        </span>
+                      ) : tx.split_ways > 1 && (
+                        <span className="split-full" title={`Full charge $${fmt(tx.amount)}, split ${tx.split_ways} ways`}>
+                          of ${fmt(tx.amount)}
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}

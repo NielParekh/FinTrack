@@ -606,6 +606,38 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
   box-shadow: 0 0 0 3.5px var(--ring);
 }
 
+/* Split-expense controls: how many people a shared charge covered, and the
+   full charge shown under the share that's actually mine. */
+.split-cell { color: var(--muted-foreground); }
+
+.split-input {
+  width: 3.5rem;
+  background: var(--secondary);
+  color: var(--foreground);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: 0.8125rem;
+  font-family: inherit;
+  text-align: center;
+  transition: background var(--response-fast) var(--ease-out);
+}
+
+.split-input:hover { background: var(--accent); }
+
+.split-input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3.5px var(--ring);
+}
+
+.split-full {
+  display: block;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
 .icon-btn {
   background: none;
   border: none;

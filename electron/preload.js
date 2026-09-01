@@ -31,4 +31,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getSpendingTransactions: ()        => ipcRenderer.invoke('get-spending-transactions'),
   getSpendingCategories:   ()        => ipcRenderer.invoke('get-spending-categories'),
   setTransactionCategory:  (id, c, r) => ipcRenderer.invoke('set-transaction-category', id, c, r),
+  setTransactionSplit:     (id, w)  => ipcRenderer.invoke('set-transaction-split', id, w),
 })

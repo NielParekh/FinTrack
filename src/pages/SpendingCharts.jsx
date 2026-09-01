@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Tooltip } from 'chart.js'
 import { Bar } from 'react-chartjs-2'
 import { getSpendingTransactions, getSpendingAccounts } from '../lib/api'
-import { fmt, isPurchase, monthKey } from '../lib/utils'
+import { fmt, isPurchase, monthKey, myShare } from '../lib/utils'
 import { useTheme } from '../lib/useTheme'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip)
@@ -69,7 +69,7 @@ export default function SpendingCharts() {
     for (const t of spendTxs) {
       if (category !== 'all' && t.category !== category) continue
       const m = monthKey(t.date)
-      totals[m] = (totals[m] || 0) + t.amount
+      totals[m] = (totals[m] || 0) + myShare(t)
     }
     return months.map(m => [m, totals[m] || 0])
   }, [spendTxs, months, category])
@@ -81,7 +81,7 @@ export default function SpendingCharts() {
 
   const byCategory = useMemo(() => {
     const totals = {}
-    for (const t of monthCardTxs) totals[t.category] = (totals[t.category] || 0) + t.amount
+    for (const t of monthCardTxs) totals[t.category] = (totals[t.category] || 0) + myShare(t)
     return Object.entries(totals).sort((a, b) => b[1] - a[1])
   }, [monthCardTxs])
 
@@ -89,7 +89,7 @@ export default function SpendingCharts() {
     const totals = {}
     for (const t of monthCardTxs) {
       if (category !== 'all' && t.category !== category) continue
-      totals[t.merchant] = (totals[t.merchant] || 0) + t.amount
+      totals[t.merchant] = (totals[t.merchant] || 0) + myShare(t)
     }
     return Object.entries(totals).sort((a, b) => b[1] - a[1]).slice(0, 8)
   }, [monthCardTxs, category])
@@ -169,7 +169,7 @@ export default function SpendingCharts() {
               {categoryOptions.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </label>
-          <span className="muted-cell chart-filters-note">Purchases only — payments &amp; refunds excluded</span>
+          <span className="muted-cell chart-filters-note">Your share of purchases — payments &amp; refunds excluded</span>
         </div>
       </div>
 

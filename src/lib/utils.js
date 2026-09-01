@@ -27,6 +27,17 @@ export function isPurchase(tx) {
   return tx.amount > 0 && !NON_SPEND.has(tx.category)
 }
 
+// A shared expense hits the card in full but only a fraction of it is mine.
+// `amount` stays the real charge so it still reconciles against a statement;
+// everything that totals *my* spending goes through here instead.
+// split_ways of 0 means none of it is mine — fronted for someone else and
+// paid back in full — so it contributes nothing to my spending.
+export function myShare(tx) {
+  const ways = tx.split_ways
+  if (ways === 0) return 0
+  return ways > 1 ? tx.amount / ways : tx.amount
+}
+
 // YYYY-MM, sliced off the ISO date rather than parsed, so a transaction
 // never lands in the wrong month via the local timezone.
 export function monthKey(date) {

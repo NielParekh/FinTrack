@@ -28,3 +28,4 @@ export const syncTransactions        = ()       => window.electronAPI.syncTransa
 export const getSpendingTransactions = ()       => window.electronAPI.getSpendingTransactions()
 export const getSpendingCategories   = ()       => window.electronAPI.getSpendingCategories()
 export const setTransactionCategory  = (id, c, r) => window.electronAPI.setTransactionCategory(id, c, r)
+export const setTransactionSplit     = (id, w) => window.electronAPI.setTransactionSplit(id, w)
