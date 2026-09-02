@@ -1,4 +1,5 @@
 const { ipcMain } = require('electron')
+const { randomUUID } = require('crypto')
 const log = require('../lib/logger')
 const { readJSON, writeJSON } = require('../lib/data')
 const { getPlaidClient, decryptToken } = require('../lib/plaid')
@@ -284,6 +285,54 @@ function register() {
     if (n === 1) delete tx.split_ways
     else tx.split_ways = n
 
+    writeJSON('spending_transactions.json', txs)
+    return { success: true }
+  })
+
+  // Manual transactions: spending that never touches a linked card — cash,
+  // or Zelle to a friend who covered the bill. Stored in the same file and
+  // shape as synced rows so every total and chart counts them without special
+  // cases; `manual: true` marks them as user-owned. The sync loop keys on
+  // Plaid transaction ids, so it can neither modify nor remove them.
+  ipcMain.handle('add-manual-transaction', (_, payload) => {
+    const { date, merchant, amount, category } = payload || {}
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date || '')) throw new Error('Date must be YYYY-MM-DD')
+    const name = String(merchant || '').trim()
+    if (!name) throw new Error('Description is required')
+    const amt = Math.round(Number(amount) * 100) / 100
+    if (!Number.isFinite(amt) || amt <= 0) throw new Error('Amount must be a positive number')
+    const cat = String(category || '').trim()
+    const cats = readJSON('spending_categories.json').categories || []
+    if (!cats.includes(cat)) throw new Error('Unknown category')
+
+    const txs = readJSON('spending_transactions.json')
+    const tx = {
+      id: 'manual-' + randomUUID(),
+      item_id: 'manual',
+      account_id: null,
+      date,
+      name,
+      merchant: name,
+      amount: amt, // positive = money out, matching Plaid's convention
+      pending: false,
+      plaid_category: null,
+      category: cat,
+      // user_category keeps the merchant-map bulk recategorize from touching it
+      user_category: cat,
+      manual: true,
+    }
+    txs.push(tx)
+    writeJSON('spending_transactions.json', txs)
+    log.info(`Manual transaction added: ${name}, $${amt}, ${cat}`)
+    return tx
+  })
+
+  ipcMain.handle('delete-manual-transaction', (_, txId) => {
+    const txs = readJSON('spending_transactions.json')
+    const idx = txs.findIndex(t => t.id === txId)
+    if (idx === -1) throw new Error('Transaction not found')
+    if (!txs[idx].manual) throw new Error('Only manually added transactions can be deleted')
+    txs.splice(idx, 1)
     writeJSON('spending_transactions.json', txs)
     return { success: true }
   })

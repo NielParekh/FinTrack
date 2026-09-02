@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js'
 import { Doughnut } from 'react-chartjs-2'
-import { getSpendingTransactions, getSpendingCategories, getSpendingAccounts, setTransactionCategory, setTransactionSplit } from '../lib/api'
-import { fmt, isPurchase, monthKey, myShare } from '../lib/utils'
+import { getSpendingTransactions, getSpendingCategories, getSpendingAccounts, setTransactionCategory, setTransactionSplit, addManualTransaction, deleteManualTransaction } from '../lib/api'
+import { fmt, isPurchase, monthKey, myShare, today, NON_SPEND } from '../lib/utils'
 
 ChartJS.register(ArcElement, Tooltip, Legend)
 
@@ -18,6 +18,8 @@ export default function Spending() {
   const [month, setMonth] = useState(monthKey(new Date().toISOString()))
   const [error, setError] = useState('')
   const [splitDraft, setSplitDraft] = useState({})
+  const [showAdd, setShowAdd] = useState(false)
+  const [addForm, setAddForm] = useState({ date: today(), merchant: '', amount: '', category: 'Other' })
 
   async function load() {
     try {
@@ -86,6 +88,28 @@ export default function Spending() {
 
     try {
       await setTransactionSplit(tx.id, ways)
+      await load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleAddManual(e) {
+    e.preventDefault()
+    try {
+      await addManualTransaction(addForm)
+      setAddForm(f => ({ ...f, merchant: '', amount: '' }))
+      setMonth(monthKey(addForm.date)) // jump to where the new row landed
+      await load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleDeleteManual(tx) {
+    if (!confirm(`Delete “${tx.merchant}” ($${fmt(tx.amount)})?`)) return
+    try {
+      await deleteManualTransaction(tx.id)
       await load()
     } catch (err) {
       setError(err.message)
@@ -167,8 +191,38 @@ export default function Spending() {
       </div>
 
       <div className="card">
-        <div className="card-header"><h2>Transactions — {month}</h2></div>
+        <div className="card-header">
+          <h2>Transactions — {month}</h2>
+          <button className="btn btn-secondary add-expense-btn" onClick={() => setShowAdd(v => !v)}>
+            {showAdd ? 'Close' : '+ Add expense'}
+          </button>
+        </div>
         <div className="card-body">
+          {showAdd && (
+            <form className="manual-tx-form" onSubmit={handleAddManual}>
+              <input
+                type="date" required value={addForm.date}
+                onChange={e => setAddForm(f => ({ ...f, date: e.target.value }))}
+              />
+              <input
+                type="text" required placeholder="Description (e.g. Zelle to Sam — dinner)"
+                className="manual-tx-desc" value={addForm.merchant}
+                onChange={e => setAddForm(f => ({ ...f, merchant: e.target.value }))}
+              />
+              <input
+                type="number" required step="0.01" min="0.01" placeholder="Amount ($)"
+                value={addForm.amount}
+                onChange={e => setAddForm(f => ({ ...f, amount: e.target.value }))}
+              />
+              <select
+                className="category-select" value={addForm.category}
+                onChange={e => setAddForm(f => ({ ...f, category: e.target.value }))}
+              >
+                {categories.filter(c => !NON_SPEND.has(c)).map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <button type="submit" className="btn btn-primary">Add</button>
+            </form>
+          )}
           {monthTxs.length === 0 ? (
             <p className="etf-empty">No transactions this month.</p>
           ) : (
@@ -188,7 +242,18 @@ export default function Spending() {
                   <tr key={tx.id} className={tx.pending ? 'tx-pending' : ''}>
                     <td className="muted-cell">{tx.date}{tx.pending ? ' ⏳' : ''}</td>
                     <td>{tx.merchant}</td>
-                    <td className="muted-cell">{cardByAccount[tx.account_id] || '—'}</td>
+                    <td className="muted-cell">
+                      {tx.manual ? (
+                        <>
+                          Manual
+                          <button
+                            className="icon-btn danger manual-delete"
+                            title="Delete this manual transaction"
+                            onClick={() => handleDeleteManual(tx)}
+                          >✕</button>
+                        </>
+                      ) : (cardByAccount[tx.account_id] || '—')}
+                    </td>
                     <td>
                       <select
                         className="category-select"

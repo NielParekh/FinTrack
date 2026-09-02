@@ -29,3 +29,5 @@ export const getSpendingTransactions = ()       => window.electronAPI.getSpendin
 export const getSpendingCategories   = ()       => window.electronAPI.getSpendingCategories()
 export const setTransactionCategory  = (id, c, r) => window.electronAPI.setTransactionCategory(id, c, r)
 export const setTransactionSplit     = (id, w) => window.electronAPI.setTransactionSplit(id, w)
+export const addManualTransaction    = (data)   => window.electronAPI.addManualTransaction(data)
+export const deleteManualTransaction = (id)     => window.electronAPI.deleteManualTransaction(id)
