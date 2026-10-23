@@ -55,7 +55,7 @@ export default function SpendingAccounts() {
     setError('')
     setBusy(true)
     setLinking(true)
-    setSyncMsg(`Re-authenticate ${institution} in your browser — transactions and history are kept.`)
+    setSyncMsg(`Sign in to ${institution} in your browser and choose which accounts to share — transactions and history are kept.`)
     try {
       const res = await relinkCardHosted(itemId)
       setLinking(false)
@@ -63,9 +63,9 @@ export default function SpendingAccounts() {
         setSyncMsg(res.timeout ? 'Re-linking timed out. Try again.' : '')
       } else {
         await load()
-        setSyncMsg(`${institution} reconnected. Syncing…`)
+        setSyncMsg(`${institution} updated. Syncing…`)
         const sync = await syncTransactions()
-        setSyncMsg(`${institution} reconnected. Synced ${sync.added} new transactions.`)
+        setSyncMsg(`${institution} updated. Synced ${sync.added} new transactions.`)
         await load()
       }
     } catch (err) {
@@ -144,15 +144,14 @@ export default function SpendingAccounts() {
                     </td>
                     <td>
                       <div className="etf-holding-actions visible">
-                        {item.status !== 'ok' && (
-                          <button
-                            className="btn btn-secondary btn-relink"
-                            disabled={busy}
-                            onClick={() => handleRelink(item.item_id, item.institution)}
-                          >
-                            Re-link
-                          </button>
-                        )}
+                        <button
+                          className="btn btn-secondary btn-relink"
+                          disabled={busy}
+                          title={item.status === 'ok' ? 'Add or remove cards on this login' : undefined}
+                          onClick={() => handleRelink(item.item_id, item.institution)}
+                        >
+                          {item.status === 'ok' ? 'Manage accounts' : 'Re-link'}
+                        </button>
                         <button className="icon-btn danger" title="Unlink" onClick={() => handleRemove(item.item_id, item.institution)}>🗑️</button>
                       </div>
                     </td>

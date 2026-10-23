@@ -80,7 +80,8 @@ function register() {
   })
 
   // Update mode: re-authenticate an existing item (ITEM_LOGIN_REQUIRED etc.)
-  // without unlinking, so its transactions and sync cursor survive.
+  // or change which accounts it shares, without unlinking, so its
+  // transactions and sync cursor survive.
   ipcMain.handle('relink-card-hosted', async (_, itemId) => {
     try {
       const items = readJSON('plaid_items.json')
@@ -89,7 +90,7 @@ function register() {
       const accessToken = decryptToken(item)
 
       const result = await runHostedLink(
-        { access_token: accessToken },
+        { access_token: accessToken, update: { account_selection_enabled: true } },
         // Update mode adds no item, so success only shows up in the events
         async session => {
           const ok = (session.events || []).some(
