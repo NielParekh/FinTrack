@@ -54,6 +54,9 @@ function toStoredTransaction(tx, itemId, merchantMap) {
     merchant,
     amount: tx.amount, // Plaid: positive = money out
     pending: tx.pending,
+    // Set on a posted charge that replaces an earlier pending one, so the
+    // launch summary can report it as posted rather than as new spending.
+    pending_transaction_id: tx.pending_transaction_id || null,
     plaid_category: tx.personal_finance_category?.detailed || null,
     category: (isRefund || isPayment) ? auto : (merchantMap[merchant] || auto),
     user_category: (isRefund || isPayment) ? null : (merchantMap[merchant] || null),

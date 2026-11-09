@@ -1146,3 +1146,46 @@ h1, h2, h3 { letter-spacing: -0.021em; line-height: 1.13; }
   justify-content: space-between;
   gap: 16px;
 }
+
+/* ── Launch sync summary ────────────────────────────────── */
+.sync-pill {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 900;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  font-size: 0.8125rem;
+  color: var(--muted-foreground);
+  animation: sheet-in var(--response) var(--ease-out);
+}
+
+.modal-content.sync-summary { max-width: 560px; }
+
+.sync-section { margin-top: 18px; }
+.sync-section h3 {
+  margin: 0 0 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.sync-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: 0.875rem;
+}
+
+.sync-table { font-size: 0.8125rem; }
+.sync-summary .expense { color: var(--expense); }
+.sync-note, .sync-more { margin: 4px 0 8px; font-size: 0.8125rem; }
+.sync-summary .form-actions { margin-top: 20px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .sync-pill { animation: none; }
+}

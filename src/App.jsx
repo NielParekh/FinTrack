@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, Fragment } from 'react'
 import { usePressFeedback } from './lib/usePress'
 import { enterStaggered } from './lib/motion'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
+import SyncSummary from './components/SyncSummary'
 import Dashboard from './pages/Dashboard'
 import Investments from './pages/Investments'
 import Bank from './pages/Bank'
@@ -17,6 +18,9 @@ import Data from './pages/Data'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
+  // Bumped when the launch sync lands, remounting the open page so it
+  // reloads instead of showing what it read before the sync finished
+  const [dataVersion, setDataVersion] = useState(0)
   const [theme, setTheme] = useState(() => localStorage.getItem('fintrack-theme') || 'light')
   const shellRef = useRef(null)
   const contentRef = useRef(null)
@@ -61,9 +65,13 @@ export default function App() {
       <div className="main">
         <Topbar activeTab={activeTab} />
         <div className="content" ref={contentRef}>
-          {renderPage()}
+          <Fragment key={dataVersion}>{renderPage()}</Fragment>
         </div>
       </div>
+      <SyncSummary
+        onSynced={() => setDataVersion(v => v + 1)}
+        onViewSpending={() => setActiveTab('spending')}
+      />
     </div>
   )
 }
