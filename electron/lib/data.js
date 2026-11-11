@@ -43,7 +43,7 @@ function ensureDataDir() {
     'plaid_holdings.json': JSON.stringify({ holdings: [], synced_at: null }, null, 2),
     'spending_transactions.json': '[]',
     'spending_categories.json': JSON.stringify({
-      categories: ['Groceries', 'Dining', 'Transport', 'Travel', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Fitness', 'Personal', 'Fees', 'Refunds', 'Payments', 'Other'],
+      categories: ['Groceries', 'Dining', 'Transport', 'Travel', 'Shopping', 'Entertainment', 'Bills', 'Health', 'Fitness', 'Personal', 'SRMD', 'Fees', 'Refunds', 'Payments', 'Other'],
       merchant_map: {},
     }, null, 2),
   }
