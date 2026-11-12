@@ -22,6 +22,30 @@ function resolveCashAccount(accounts, pinnedId) {
   return accounts.find(isCashAccount) || null
 }
 
+const FALLBACK_ERROR_TYPES = new Set(['API_ERROR', 'INSTITUTION_ERROR', 'RATE_LIMIT_EXCEEDED'])
+
+// Prefers a real-time balance, but falls back to the cached one from
+// accountsGet. Wealthfront's real-time balance call has failed with a
+// Plaid-side INTERNAL_SERVER_ERROR for days at a time while accountsGet on the
+// same token keeps working, and a cash account's balance only moves on
+// deposits and monthly interest, so a cached value is good enough.
+async function fetchAccounts(client, item) {
+  const access_token = decryptToken(item)
+  try {
+    const res = await client.accountsBalanceGet({ access_token })
+    return res.data.accounts
+  } catch (err) {
+    const code = err?.response?.data?.error_code
+    // Item-level problems (e.g. ITEM_LOGIN_REQUIRED) would fail accountsGet
+    // too and the user needs to see them, so only fall back on errors that
+    // are about the live fetch, not the connection.
+    if (!FALLBACK_ERROR_TYPES.has(err?.response?.data?.error_type)) throw err
+    log.warn(`Real-time balance failed for ${item.institution} (${code}); using cached balance`)
+    const res = await client.accountsGet({ access_token })
+    return res.data.accounts
+  }
+}
+
 function register() {
   ipcMain.handle('get-hysa-transactions', () => {
     return readJSON('hysa_transactions.json').sort((a, b) => {
@@ -95,8 +119,7 @@ function register() {
     for (const item of brokerages) {
       let accounts
       try {
-        const res = await client.accountsBalanceGet({ access_token: decryptToken(item) })
-        accounts = res.data.accounts
+        accounts = await fetchAccounts(client, item)
       } catch (err) {
         lastError = err?.response?.data?.error_message || err.message
         item.status = 'error'
