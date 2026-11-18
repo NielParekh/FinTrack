@@ -2,13 +2,19 @@ const { ipcMain } = require('electron')
 const log = require('../lib/logger')
 const { readJSON, writeJSON, appendSnapshot } = require('../lib/data')
 const { getPlaidClient, decryptToken } = require('../lib/plaid')
-const { runHostedLink, exchangeAndStore, plaidError } = require('../lib/plaidLink')
+const {
+  runHostedLink, exchangeAndStore, plaidError, toStoredAccount,
+} = require('../lib/plaidLink')
 
-// Checking/savings accounts linked to feed the Bank balance. Stored in
-// plaid_items.json as kind: 'bank' so the spending sync leaves them alone —
-// their transactions (paychecks, transfers, card payments) aren't purchases.
+// A bank login linked to feed the Bank balance, stored in plaid_items.json as
+// kind: 'bank'. Its checking/savings balances sum into bank_balance. If the
+// same login also shares a credit card, the spending sync picks up that
+// card's transactions — checking activity (paychecks, transfers, card
+// payments) is never treated as spending.
 
 const isBank = item => item.kind === 'bank'
+// Items linked before `group` was recorded held deposit accounts only
+const isDeposit = a => (a.group || 'depository') === 'depository'
 
 const publicItem = ({ access_token, enc, ...rest }) => rest
 
@@ -25,9 +31,12 @@ function register() {
           // case these transactions are ever wanted — it costs nothing extra.
           products: ['transactions'],
           transactions: { days_requested: 730 },
-          // Only checking/savings-type accounts can be picked, so a credit
-          // card at the same bank can't end up counted as cash
-          account_filters: { depository: { account_subtypes: ['all'] } },
+          // Checking/savings for the balance, plus any credit card at the
+          // same bank for Spending. Loans and investments aren't offered.
+          account_filters: {
+            depository: { account_subtypes: ['all'] },
+            credit: { account_subtypes: ['all'] },
+          },
         },
         async session => {
           const added = session.results?.item_add_results || []
@@ -69,15 +78,13 @@ function register() {
         // for Items with Transactions. Real-time /accounts/balance/get is
         // billed per call, which a launch-time sync would rack up.
         const res = await client.accountsGet({ access_token: decryptToken(item) })
-        const deposits = res.data.accounts.filter(a => a.type === 'depository')
-        item.accounts = deposits.map(a => ({
-          id: a.account_id,
-          name: a.name,
-          mask: a.mask,
-          type: a.subtype || a.type,
+        // Keep every account (a credit card here shows up under Spending),
+        // but only deposit accounts count as cash
+        item.accounts = res.data.accounts.map(a => ({
+          ...toStoredAccount(a),
           balance: a.balances?.current ?? null,
         }))
-        total += item.accounts.reduce((s, a) => s + (a.balance || 0), 0)
+        total += item.accounts.filter(isDeposit).reduce((s, a) => s + (a.balance || 0), 0)
         item.status = 'ok'
         item.last_synced = new Date().toISOString()
         delete item.error
@@ -123,6 +130,10 @@ function register() {
     }
     items.splice(idx, 1)
     writeJSON('plaid_items.json', items)
+
+    // Any credit card on this login goes with it
+    const txs = readJSON('spending_transactions.json')
+    writeJSON('spending_transactions.json', txs.filter(t => t.item_id !== itemId))
 
     // The last synced balance stays as a manual figure; only the sync stops
     if (!items.some(isBank)) {

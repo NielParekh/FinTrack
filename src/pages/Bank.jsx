@@ -5,6 +5,10 @@ import {
 } from '../lib/api'
 import { fmt } from '../lib/utils'
 
+// Items linked before `group` was recorded held deposit accounts only
+const isDeposit = a => (a.group || 'depository') === 'depository'
+const cardsOn = item => (item.accounts || []).filter(a => a.group === 'credit')
+
 export default function Bank() {
   const [balance, setBalance] = useState(0)
   const [banks, setBanks] = useState([])
@@ -89,9 +93,12 @@ export default function Bank() {
   })
 
   const handleRemove = (itemId, institution) => run(async () => {
+    const item = banks.find(b => b.item_id === itemId)
+    const cards = item ? cardsOn(item) : []
     if (!confirm(
-      `Unlink ${institution}? The balance stops updating and becomes editable by hand. ` +
-      'Linking it again later uses a new Plaid connection — to fix a broken login, use Re-link instead.'
+      `Unlink ${institution}? The balance stops updating and becomes editable by hand.` +
+      (cards.length ? ` Its credit card's transactions are removed from Spending too.` : '') +
+      ' Linking it again later uses a new Plaid connection — to fix a broken login, use Re-link instead.'
     )) return
     await removeBank(itemId)
     setStatus(`${institution} unlinked.`)
@@ -147,7 +154,7 @@ export default function Bank() {
                   </tr>
                 </thead>
                 <tbody>
-                  {banks.flatMap(item => (item.accounts || []).map((a, i) => (
+                  {banks.flatMap(item => (item.accounts || []).filter(isDeposit).map((a, i) => (
                     <tr key={a.id}>
                       <td>
                         {item.institution} · {a.name}
@@ -204,6 +211,12 @@ export default function Bank() {
                 <button className="btn btn-secondary" onClick={handleCancelLink}>Cancel linking</button>
               )}
             </div>
+            {banks.flatMap(cardsOn).length > 0 && (
+              <p className="muted-cell sync-status">
+                {banks.flatMap(item => cardsOn(item).map(c => `${item.institution} ${c.name}${c.mask ? ` ••${c.mask}` : ''}`)).join(', ')}
+                {' '}shares this login — its transactions are under Spending.
+              </p>
+            )}
             {status && <p className="muted-cell sync-status">{status}</p>}
           </div>
         </div>

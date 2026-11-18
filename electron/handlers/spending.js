@@ -4,7 +4,7 @@ const log = require('../lib/logger')
 const { readJSON, writeJSON } = require('../lib/data')
 const { getPlaidClient, decryptToken } = require('../lib/plaid')
 const {
-  runHostedLink, abortHostedLink, exchangeAndStore, plaidError,
+  runHostedLink, abortHostedLink, exchangeAndStore, plaidError, toStoredAccount,
 } = require('../lib/plaidLink')
 
 // Map Plaid personal_finance_category → FinTrack's simple category list
@@ -63,9 +63,12 @@ function toStoredTransaction(tx, itemId, merchantMap) {
   }
 }
 
-// Card items carry no kind. Brokerage items exist for holdings and bank items
-// for balances; neither is spending, so both stay out of this side entirely.
+// Card items carry no kind. Brokerage items are holdings only. A bank item
+// feeds the Bank balance, but the same login can also hold a credit card —
+// those card accounts (and only those) belong here.
 const isCardItem = item => !item.kind
+const isBankItem = item => item.kind === 'bank'
+const creditAccounts = item => (item.accounts || []).filter(a => a.group === 'credit')
 
 function register() {
   ipcMain.handle('link-card-hosted', async () => {
@@ -97,7 +100,18 @@ function register() {
       const accessToken = decryptToken(item)
 
       const result = await runHostedLink(
-        { access_token: accessToken, update: { account_selection_enabled: true } },
+        {
+          access_token: accessToken,
+          update: { account_selection_enabled: true },
+          // A bank connection may share its credit card too; say so
+          // explicitly so the card is offered, not just checking/savings
+          ...(isBankItem(item) && {
+            account_filters: {
+              depository: { account_subtypes: ['all'] },
+              credit: { account_subtypes: ['all'] },
+            },
+          }),
+        },
         // Update mode adds no item, so success only shows up in the events
         async session => {
           const ok = (session.events || []).some(
@@ -111,12 +125,7 @@ function register() {
       // Confirm the item is healthy again and refresh its account list
       const client = getPlaidClient()
       const accountsRes = await client.accountsGet({ access_token: accessToken })
-      item.accounts = accountsRes.data.accounts.map(a => ({
-        id: a.account_id,
-        name: a.name,
-        mask: a.mask,
-        type: a.subtype || a.type,
-      }))
+      item.accounts = accountsRes.data.accounts.map(toStoredAccount)
       item.status = 'ok'
       delete item.error
       writeJSON('plaid_items.json', items)
@@ -134,17 +143,23 @@ function register() {
   })
 
   ipcMain.handle('get-spending-accounts', () => {
-    // Never send access tokens to the renderer; brokerage and bank items live
-    // on the Investments side and have no transactions to show here.
+    // Never send access tokens to the renderer. A bank connection shows here
+    // only for its credit cards, and is flagged so the page doesn't offer to
+    // unlink it — that would cut off the Bank balance too.
     return readJSON('plaid_items.json')
-      .filter(isCardItem)
-      .map(({ access_token, enc, ...rest }) => rest)
+      .filter(i => isCardItem(i) || (isBankItem(i) && creditAccounts(i).length))
+      .map(({ access_token, enc, ...rest }) =>
+        isBankItem(rest) ? { ...rest, accounts: creditAccounts(rest), bank_linked: true } : rest
+      )
   })
 
   ipcMain.handle('remove-spending-account', async (_, itemId) => {
     const items = readJSON('plaid_items.json')
     const idx = items.findIndex(i => i.item_id === itemId)
     if (idx === -1) throw new Error('Linked card not found')
+    if (isBankItem(items[idx])) {
+      throw new Error('This card shares its login with your bank account. Unlink it from the Bank tab.')
+    }
 
     const institution = items[idx].institution
     try {
@@ -169,9 +184,10 @@ function register() {
   ipcMain.handle('sync-transactions', async () => {
     const client = getPlaidClient()
     const items = readJSON('plaid_items.json')
-    // Brokerage items have no transactions product; bank items do, but their
-    // transactions are paychecks and transfers, not purchases
-    const cardItems = items.filter(isCardItem)
+    // Brokerage items have no transactions product. Bank items do, but only
+    // their credit card transactions are spending — checking activity is
+    // paychecks, transfers and card payments, so it's dropped below.
+    const cardItems = items.filter(i => isCardItem(i) || isBankItem(i))
     if (!cardItems.length) {
       log.info('Transaction sync: no linked cards, nothing to do')
       return { added: 0, modified: 0, removed: 0 }
@@ -195,6 +211,17 @@ function register() {
             cursor: cursor || undefined,
           })
           const d = res.data
+          if (isBankItem(item)) {
+            // The response lists the Item's accounts with their types, so the
+            // filter is right even before a balance sync has recorded them
+            const credit = new Set(
+              d.accounts
+                ? d.accounts.filter(a => a.type === 'credit').map(a => a.account_id)
+                : creditAccounts(item).map(a => a.id)
+            )
+            d.added = d.added.filter(tx => credit.has(tx.account_id))
+            d.modified = d.modified.filter(tx => credit.has(tx.account_id))
+          }
           for (const tx of d.added) {
             if (!byId.has(tx.transaction_id)) added++
             byId.set(tx.transaction_id, toStoredTransaction(tx, item.item_id, merchantMap))

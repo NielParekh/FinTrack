@@ -2,6 +2,19 @@ const { shell } = require('electron')
 const { readJSON, writeJSON } = require('./data')
 const { getPlaidClient, encryptToken } = require('./plaid')
 
+// How an account is kept in plaid_items.json. `group` is Plaid's top-level
+// type (depository, credit, investment…) — one login can hold several kinds,
+// e.g. a bank connection with both checking and a credit card on it.
+function toStoredAccount(a) {
+  return {
+    id: a.account_id,
+    name: a.name,
+    mask: a.mask,
+    type: a.subtype || a.type,
+    group: a.type,
+  }
+}
+
 function plaidError(err) {
   const msg = err?.response?.data?.error_message || err.message || 'Plaid request failed'
   return new Error(msg)
@@ -55,12 +68,7 @@ async function exchangeAndStore(publicToken, institutionName, extra = {}) {
   const itemId = exchange.data.item_id
 
   const accountsRes = await client.accountsGet({ access_token: accessToken })
-  const accounts = accountsRes.data.accounts.map(a => ({
-    id: a.account_id,
-    name: a.name,
-    mask: a.mask,
-    type: a.subtype || a.type,
-  }))
+  const accounts = accountsRes.data.accounts.map(toStoredAccount)
 
   const items = readJSON('plaid_items.json')
   const { token, enc } = encryptToken(accessToken)
@@ -79,4 +87,4 @@ async function exchangeAndStore(publicToken, institutionName, extra = {}) {
   return { item_id: itemId, institution: institutionName, accounts }
 }
 
-module.exports = { runHostedLink, abortHostedLink, exchangeAndStore, plaidError }
+module.exports = { runHostedLink, abortHostedLink, exchangeAndStore, plaidError, toStoredAccount }

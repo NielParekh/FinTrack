@@ -152,7 +152,10 @@ export default function SpendingAccounts() {
                         >
                           {item.status === 'ok' ? 'Manage accounts' : 'Re-link'}
                         </button>
-                        <button className="icon-btn danger" title="Unlink" onClick={() => handleRemove(item.item_id, item.institution)}>🗑️</button>
+                        {/* Shares its login with the Bank balance, so it's unlinked from there */}
+                        {item.bank_linked
+                          ? <span className="muted-cell" title="This login also feeds your Bank balance">via Bank tab</span>
+                          : <button className="icon-btn danger" title="Unlink" onClick={() => handleRemove(item.item_id, item.institution)}>🗑️</button>}
                       </div>
                     </td>
                   </tr>
