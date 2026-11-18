@@ -1,6 +1,7 @@
 import {
   getInvestments, getHoldings, getSpendingTransactions, getSpendingAccounts,
   getHysaSource, syncTransactions, syncHoldings, syncHysaBalance, updateStockValue,
+  getBankAccounts, syncBankBalance,
 } from './api'
 
 // Everything the launch summary compares, read the same way before and after
@@ -12,6 +13,7 @@ async function snapshot() {
     txs,
     holdings: held?.holdings || [],
     hysa: inv.hysa_balance || 0,
+    bank: inv.bank_balance || 0,
     // Same sum as the history snapshot, so this matches the Dashboard figure
     netWorth: (inv.bank_balance || 0) + (inv.hysa_balance || 0) + (inv.stock_value || 0) +
       (inv.etf_total || 0) + (inv.brokerage_cash || 0),
@@ -95,6 +97,17 @@ export async function syncEverything() {
     errors.push(`HYSA: ${err.message}`)
   }
 
+  try {
+    // Same idea: a bank balance typed in by hand has nothing to sync from
+    if ((await getBankAccounts()).items.length) {
+      const res = await syncBankBalance()
+      errors.push(...(res.errors || []))
+      ran = true
+    }
+  } catch (err) {
+    errors.push(`Bank: ${err.message}`)
+  }
+
   const after = await snapshot()
   const accounts = await getSpendingAccounts()
   const cardNames = {}
@@ -116,9 +129,11 @@ export async function syncEverything() {
     ...txs,
     holdings,
     hysa: { before: before.hysa, after: after.hysa },
+    bank: { before: before.bank, after: after.bank },
     netWorth: { before: before.netWorth, after: after.netWorth },
   }
   summary.hasChanges = txs.added.length > 0 || txs.posted.length > 0 || txs.removed.length > 0 ||
-    holdings.changes.length > 0 || Math.abs(summary.hysa.after - summary.hysa.before) >= 0.01
+    holdings.changes.length > 0 || Math.abs(summary.hysa.after - summary.hysa.before) >= 0.01 ||
+    Math.abs(summary.bank.after - summary.bank.before) >= 0.01
   return summary
 }

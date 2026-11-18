@@ -85,7 +85,7 @@ export default function SyncSummary({ onSynced, onViewSpending }) {
   if (phase !== 'open') return null
 
   const close = () => setPhase('idle')
-  const { added, posted, removed, errors, cardNames = {}, holdings, hysa, netWorth } = summary
+  const { added, posted, removed, errors, cardNames = {}, holdings, hysa, bank, netWorth } = summary
 
   return (
     <div className="modal" onClick={close}>
@@ -150,6 +150,16 @@ export default function SyncSummary({ onSynced, onViewSpending }) {
               <div className="sync-row">
                 <span>Balance</span>
                 <span>${fmt(hysa.after)} <Delta before={hysa.before} after={hysa.after} /></span>
+              </div>
+            </section>
+          )}
+
+          {bank && Math.abs(bank.after - bank.before) >= 0.01 && (
+            <section className="sync-section">
+              <h3>Bank</h3>
+              <div className="sync-row">
+                <span>Balance</span>
+                <span>${fmt(bank.after)} <Delta before={bank.before} after={bank.after} /></span>
               </div>
             </section>
           )}

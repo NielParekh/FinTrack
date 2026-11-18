@@ -63,6 +63,10 @@ function toStoredTransaction(tx, itemId, merchantMap) {
   }
 }
 
+// Card items carry no kind. Brokerage items exist for holdings and bank items
+// for balances; neither is spending, so both stay out of this side entirely.
+const isCardItem = item => !item.kind
+
 function register() {
   ipcMain.handle('link-card-hosted', async () => {
     try {
@@ -130,10 +134,10 @@ function register() {
   })
 
   ipcMain.handle('get-spending-accounts', () => {
-    // Never send access tokens to the renderer; brokerage items live on the
-    // Investments side and have no transactions to show here.
+    // Never send access tokens to the renderer; brokerage and bank items live
+    // on the Investments side and have no transactions to show here.
     return readJSON('plaid_items.json')
-      .filter(i => i.kind !== 'brokerage')
+      .filter(isCardItem)
       .map(({ access_token, enc, ...rest }) => rest)
   })
 
@@ -165,8 +169,9 @@ function register() {
   ipcMain.handle('sync-transactions', async () => {
     const client = getPlaidClient()
     const items = readJSON('plaid_items.json')
-    // Brokerage items are linked for holdings only — no transactions product
-    const cardItems = items.filter(i => i.kind !== 'brokerage')
+    // Brokerage items have no transactions product; bank items do, but their
+    // transactions are paychecks and transfers, not purchases
+    const cardItems = items.filter(isCardItem)
     if (!cardItems.length) {
       log.info('Transaction sync: no linked cards, nothing to do')
       return { added: 0, modified: 0, removed: 0 }

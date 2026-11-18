@@ -31,3 +31,7 @@ export const setTransactionCategory  = (id, c, r) => window.electronAPI.setTrans
 export const setTransactionSplit     = (id, w) => window.electronAPI.setTransactionSplit(id, w)
 export const addManualTransaction    = (data)   => window.electronAPI.addManualTransaction(data)
 export const deleteManualTransaction = (id)     => window.electronAPI.deleteManualTransaction(id)
+export const linkBankHosted          = ()       => window.electronAPI.linkBankHosted()
+export const getBankAccounts         = ()       => window.electronAPI.getBankAccounts()
+export const syncBankBalance         = ()       => window.electronAPI.syncBankBalance()
+export const removeBank              = (id)     => window.electronAPI.removeBank(id)

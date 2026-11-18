@@ -34,4 +34,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setTransactionSplit:     (id, w)  => ipcRenderer.invoke('set-transaction-split', id, w),
   addManualTransaction:    (data)    => ipcRenderer.invoke('add-manual-transaction', data),
   deleteManualTransaction: (id)      => ipcRenderer.invoke('delete-manual-transaction', id),
+  linkBankHosted:          ()        => ipcRenderer.invoke('link-bank-hosted'),
+  getBankAccounts:         ()        => ipcRenderer.invoke('get-bank-accounts'),
+  syncBankBalance:         ()        => ipcRenderer.invoke('sync-bank-balance'),
+  removeBank:              (itemId)  => ipcRenderer.invoke('remove-bank', itemId),
 })
